@@ -28,7 +28,7 @@ VOLUME /data
 
 RUN mkdir /cfg /code
 ADD nginx.conf /cfg/nginx.conf
-RUN git clone https://github.com/williballenthin/cfg-ui.git /code/cfg-ui
+RUN sleep 1 && git clone https://github.com/williballenthin/cfg-ui.git /code/cfg-ui
 RUN cd /code/cfg-ui && \
     LEIN_ROOT=yes /tools/lein cljsbuild once
 
