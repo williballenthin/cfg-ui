@@ -33,9 +33,10 @@ RUN git clone https://github.com/williballenthin/cfg-ui.git /code/cfg-ui
 RUN cd /code/cfg-ui && \
     LEIN_ROOT=yes /tools/lein cljsbuild once
 
-RUN sleep 1.001 && cd /code/cfg-ui && git pull origin master
+RUN sleep 1.0001 && cd /code/cfg-ui && git pull origin master
 RUN cd /code/cfg-ui && \
     LEIN_ROOT=yes /tools/lein cljsbuild once
 
-ENTRYPOINT ["/bin/bash"]
-CMD ["LEIN_ROOT=1 rlwrap /tools/lein run -m clojure.main /code/cfg-ui/script/figwheel.clj"]
+ENV LEIN_ROOT 1
+# TODO: add rlwrap
+CMD nginx -c /cfg/nginx.conf && cd /code/cfg-ui/ && /tools/lein run -m clojure.main /code/cfg-ui/script/figwheel.clj
