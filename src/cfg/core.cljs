@@ -83,10 +83,10 @@
 
 (def canvas (om/factory Canvas))
 
+
 (defn hex-format
   [n]
-  (.toString n 16))
-
+  (str "0x" (string/upper-case (.toString n 16))))
 
 
 (defui BasicBlock
@@ -103,7 +103,7 @@
       (dom/tbody
        (for [insn (:insns (om/props this))]
          (dom/tr {:key (str (:addr insn)) :class "insn"}
-                 (dom/td {:class "addr"} (str "0x" (string/upper-case (hex-format (:addr insn)))))
+                 (dom/td {:class "addr"} (hex-format (:addr insn)))
                  (dom/td {:class "bytes"} (string/upper-case (:bytes insn)))
                  (dom/td {:class "mnem"} (:mnem insn))
                  (dom/td {:class "operands"} (:operands insn))
