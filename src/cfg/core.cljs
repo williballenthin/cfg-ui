@@ -27,43 +27,58 @@
     :margin-top 0})
   (render
    [this]
-   (dom/div {:class "canvas-viewport"
-             ;; click-and-drag on the viewport pans the canvas
-             :onMouseDown
-             (fn [e]
-               (.preventDefault e)
-               (let [evt (or e (js/event))
-                     last-x (aget evt "clientX")
-                     last-y (aget evt "clientY")
-                     state (om/get-state this)]
-                 (om/set-state! this (assoc state :dragging true :last-x last-x :last-y last-y))))
-             :onMouseUp
-             (fn [e]
-               (.preventDefault e)
-               (let [evt (or e (js/event))
-                     state (om/get-state this)]
-                 (om/set-state! this (assoc state :dragging false))))
-             :onMouseMove
-             (fn [e]
-               (.preventDefault e)
-               (when (:dragging (om/get-state this))
+   ;; use local mutable state for performance.
+   ;; while panning, update this state, and only re-render upon `onMouseUp`.
+   (let [a-last-x (atom (:last-x (om/get-state this)))
+         a-margin-left (atom (:margin-left (om/get-state this)))
+         a-last-y (atom (:last-y (om/get-state this)))
+         a-margin-top (atom (:margin-top (om/get-state this)))]
+     (dom/div {:class "canvas-viewport"
+               ;; click-and-drag on the viewport pans the canvas
+               :onMouseDown
+               (fn [e]
+                 (.preventDefault e)
+                 (let [evt (or e (js/event))
+                       last-x (aget evt "clientX")
+                       last-y (aget evt "clientY")
+                       state (om/get-state this)]
+                   (om/set-state! this (assoc state :dragging true :last-x last-x :last-y last-y))))
+               :onMouseUp
+               (fn [e]
+                 (.preventDefault e)
                  (let [evt (or e (js/event))
                        state (om/get-state this)
-                       client-x (aget evt "clientX")
-                       delta-x (- client-x (:last-x state))
-                       margin-left' (+ (:margin-left state) delta-x)
-                       client-y (aget evt "clientY")
-                       delta-y (- client-y (:last-y state))
-                       margin-top' (+ (:margin-top state) delta-y)
-                       updates {:last-x client-x
-                                :margin-left margin-left'
-                                :last-y client-y
-                                :margin-top margin-top'}]
-                   (om/set-state! this (merge state updates)))))}
-            (dom/div {:class "canvas"
-                      :style #js{"marginLeft" (:margin-left (om/get-state this))
-                                 "marginTop" (:margin-top (om/get-state this))}}
-                     (om/children this)))))
+                       updates {:dragging false
+                                :last-x @a-last-x
+                                :margin-left @a-margin-left
+                                :last-y @a-last-y
+                                :margin-top @a-margin-top}]
+                   (om/set-state! this (merge state updates))))
+               :onMouseMove
+               (fn [e]
+                 (.preventDefault e)
+                 (when (:dragging (om/get-state this))
+                   (let [evt (or e (js/event))
+                         canvas (js/ReactDOM.findDOMNode (aget this "refs" "canvas"))
+                         style (aget canvas "style")
+                         client-x (aget evt "clientX")
+                         delta-x (- client-x @a-last-x)
+                         margin-left' (+ @a-margin-left delta-x)
+                         client-y (aget evt "clientY")
+                         delta-y (- client-y @a-last-y)
+                         margin-top' (+ @a-margin-top delta-y)]
+                     (reset! a-last-x client-x)
+                     (reset! a-margin-left margin-left')
+                     (reset! a-last-y client-y)
+                     (reset! a-margin-top margin-top')
+                     (aset style "marginLeft" (str margin-left' "px"))
+                     (aset style "marginTop" (str margin-top' "px")))))}
+              ;;(om/set-state! this (merge state updates)))))}
+              (dom/div {:class "canvas"
+                        :ref "canvas"
+                        :style #js{"marginLeft" (:margin-left (om/get-state this))
+                                   "marginTop" (:margin-top (om/get-state this))}}
+                       (om/children this))))))
 
 
 (def canvas (om/factory Canvas))
