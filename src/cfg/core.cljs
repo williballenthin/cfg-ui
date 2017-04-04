@@ -2,6 +2,8 @@
   (:require [goog.dom :as gdom]
             [clojure.data]
             [clojure.string :as string]
+            [goog.string :as gstring]
+            [goog.string.format]
             [cljs.pprint]
             [om.util]
             [om-tools.dom :as dom]
@@ -61,10 +63,41 @@
             (dom/div {:class "canvas"
                       :style #js{"marginLeft" (:margin-left (om/get-state this))
                                  "marginTop" (:margin-top (om/get-state this))}}
-              (om/children this)))))
+                     (om/children this)))))
 
 
 (def canvas (om/factory Canvas))
+
+(defn hex-format
+  [n]
+  (.toString n 16))
+
+
+
+(defui BasicBlock
+  Object
+  (render
+   [this]
+   (dom/div
+    {:class "basic-block"}
+    (dom/div {:class "bb-header"})
+    (dom/div
+     {:class "bb-content"}
+     (dom/table
+      (dom/thead)
+      (dom/tbody
+       (for [insn (:insns (om/props this))]
+         (dom/tr {:key (str (:addr insn)) :class "insn"}
+                 (dom/td {:class "addr"} (str "0x" (string/upper-case (hex-format (:addr insn)))))
+                 (dom/td {:class "bytes"} (string/upper-case (:bytes insn)))
+                 (dom/td {:class "mnem"} (:mnem insn))
+                 (dom/td {:class "operands"} (:operands insn))
+                 (dom/td {:class "comments"} (when (and (:comments insn)
+                                                        (not= "" (:comments insn)))
+                                               (str ";  " (:comments insn))))))))))))
+
+
+(def basicblock (om/factory BasicBlock))
 
 
 (defui App
@@ -73,7 +106,11 @@
    [this]
    (canvas
     {:props :none}
-    (dom/div "hello world!"))))
+    (basicblock {:insns [{:addr 0x412B4F :bytes "53" :mnem "push" :operands "ebx"}
+                         {:addr 0x412b50 :bytes "6A 01" :mnem "push" :operands "1" :comments "size_t"}
+                         {:addr 0x412b52 :bytes "e8 06 18 00 00" :mnem "call" :operands "??2@YAPAXI@Z" :comments "operator new(uint)"}
+                         {:addr 0x412b57 :bytes "8b d8" :mnem "cmov" :operands "ebx, eax"}]}))))
+
 
 (def app (om/factory App))
 
