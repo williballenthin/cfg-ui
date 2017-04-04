@@ -103,13 +103,18 @@
       (dom/tbody
        (for [insn (:insns (om/props this))]
          (dom/tr {:key (str (:addr insn)) :class "insn"}
-                 (dom/td {:class "addr"} (hex-format (:addr insn)))
-                 (dom/td {:class "bytes"} (string/upper-case (:bytes insn)))
-                 (dom/td {:class "mnem"} (:mnem insn))
-                 (dom/td {:class "operands"} (:operands insn))
-                 (dom/td {:class "comments"} (when (and (:comments insn)
-                                                        (not= "" (:comments insn)))
-                                               (str ";  " (:comments insn))))))))))))
+                 (dom/td {:class "addr"}
+                         (hex-format (:addr insn)))
+                 (dom/td {:class "bytes"}
+                         (string/upper-case (:bytes insn)))
+                 (dom/td {:class "mnem"}
+                         (:mnem insn))
+                 (dom/td {:class "operands"}
+                         (:operands insn))
+                 (dom/td {:class "comments"}
+                         (when (and (:comments insn)
+                                    (not= "" (:comments insn)))
+                           (str ";  " (:comments insn))))))))))))
 
 
 (def basicblock (om/factory BasicBlock))
