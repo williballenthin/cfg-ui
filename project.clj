@@ -8,7 +8,6 @@
                  ;; this one doesn't seem to work with om-alpha47
                                         ;[cljsjs/react-with-addons "15.4.2-2"]
                  [cljsjs/react-with-addons "15.3.1-0"]
-                 [org.clojars.drcode/blueprint-cljs "0.1.1-SNAPSHOT"]
                  [figwheel-sidecar "0.5.9-SNAPSHOT" :scope "test"]
                  [cljs-ajax "0.5.8"]
                  [prismatic/om-tools "0.4.0"]
