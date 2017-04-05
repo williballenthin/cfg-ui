@@ -153,14 +153,10 @@
   Object
   (render
    [this]
-   (prn "render bb")
    (let [props (om/props this)
-         _ (cmn/d props)
          bbs (:basic-blocks props)
-         _ (cmn/d bbs)
          bbs (sort-by :addr bbs)
          on-select-bb (:select-bb (om/get-computed this))]
-     (cmn/d bbs)
      (dom/div
       {:class "bb-list"}
       (dom/h3 {:class "title"}
@@ -169,7 +165,7 @@
        (for [bb bbs]
          (dom/li {:key (str (:addr bb))
                   :class "bb"
-                  :onClick #(on-select-bb (:addr bb))}
+                  :onClick #(on-select-bb (:addr bb) (:ninstr bb))}
                  (dom/span {:class "offset"}
                            (hex-format (:addr bb))))))))))
 
@@ -192,11 +188,11 @@
       (om/computed (om/props this)
                    {:select-function (fn [fva]
                                        (go
-                                         (let [afbj (<! (r2/get-basic-blocks2 fva))]
+                                         (let [afbj (<! (r2/get-basic-blocks fva))]
                                            (update-model! {:basic-blocks (:response afbj)}))))}))
      (basic-block-list
       (om/computed (om/props this)
-                   {:select-bb (fn [bbva]
+                   {:select-bb (fn [bbva insn-count]
                                  (cmn/d bbva))})))
     (canvas
      {:props :none}
@@ -226,14 +222,14 @@
   []
   (let [ret (chan)]
     (go
-      (let [aflj (<! (r2/get-functions2))]
+      (let [aflj (<! (r2/get-functions))]
         (if (= :success (:status aflj))
           (do
             (prn "already init'd")
             (put! ret true)) ;
           (let [_ (prn "not yet init'd")
                 _ (prn "initializing...")
-                aaaa (<! (r2/analyze-all2))
+                aaaa (<! (r2/analyze-all))
                 _ (prn "initialized!")]
             (put! ret true)))))
     ret))
@@ -246,5 +242,5 @@
 
 (go
   (let [_ (<! (ensure-init))
-        aflj (<! (r2/get-functions2))]
+        aflj (<! (r2/get-functions))]
     (update-model! {:functions (:response aflj)})))

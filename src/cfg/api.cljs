@@ -35,43 +35,31 @@
         (e (:response resp))))))
 
 
-(defn get-disassembly
-  ([offset count s e]
-   ;; seek: s 0x401000
-   ;; disassemble: aoj 10 (opcode analysis, json-mode)
-   (api-get (str "/s " offset "; aoj " count) s e))
-  ([offset s e] (get-disassembly offset 1 s e)))
-
-
-(defn get-functions
-  [s e]
-  ;; list all functions: afl
-  (api-get "/aflj" s e))
-
-
 (defn analyze-all
-  [s e]
-  ;; analyze all+experimental: aaaa
-  (api-get "/aaaa" s e))
-
-
-
-(defn analyze-all2
   []
   ;; analyze all+experimental: aaaa
   ;; analyze all: aaaa
   (http GET (api-url "/aaa")))
 
 
-(defn get-functions2
+(defn get-functions
   []
   ;; list all functions: afl
   (http GET (api-url "/aflj")))
 
 
-(defn get-basic-blocks2
+(defn get-basic-blocks
   [fva]
-  ;; list all functions: afl
+  ;; seek: s 0x401000
+  ;; get basic blocks for current function: aflj
   (http GET (api-url (str "/s " fva "; afbj"))))
+
+
+(defn get-instructions
+  [addr count]
+  ;; seek: s 0x401000
+  ;; get extended disassembly info for 10 instructions: aoj 10
+  (http GET (api-url (str "/s " addr "; aoj " count))))
+
 
 
