@@ -19,6 +19,13 @@ RUN mkdir /tools && \
     chmod +x /tools/lein && \
     wget https://github.com/clojure/clojurescript/releases/download/r1.9.293/cljs.jar -O /tools/cljs.jar
 
+# binary analysis tools
+RUN git clone https://github.com/radare/radare2.git /tools/radare2
+RUN cd /tools/radare2 && \
+    sys/install.sh && \
+    make symstall && \
+    r2pm init && r2pm update
+
 # 80/http is the web application
 EXPOSE 80
 # 3449/ws is the figwheel websocket
@@ -39,4 +46,4 @@ RUN cd /code/cfg-ui && \
 
 ENV LEIN_ROOT 1
 # TODO: add rlwrap
-CMD nginx -c /cfg/nginx.conf && cd /code/cfg-ui/ && /tools/lein run -m clojure.main /code/cfg-ui/script/figwheel.clj
+CMD nginx -c /cfg/nginx.conf && (r2 -q -c "http.bind=0.0.0.0; =h 90" /bin/ls &) && cd /code/cfg-ui/ && /tools/lein run -m clojure.main /code/cfg-ui/script/figwheel.clj

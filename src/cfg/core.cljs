@@ -2,6 +2,7 @@
   (:require [goog.dom :as gdom]
             [clojure.data]
             [clojure.string :as string]
+            [cljs.core.async :refer [put! chan <! close!]]
             [goog.string :as gstring]
             [goog.string.format]
             [cljs.pprint]
@@ -10,7 +11,9 @@
             [om.next :as om :refer-macros [defui]]
             ;; include this first so it gets installed early
             [cfg.devtools :as cfg.devtools]
-            [cfg.common :as cmn]))
+            [cfg.common :as cmn]
+            [cfg.api :as r2])
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
 
 (enable-console-print!)
@@ -120,21 +123,76 @@
 (def basicblock (om/factory BasicBlock))
 
 
+(defui FunctionList
+  Object
+  (render
+   [this]
+   (dom/div
+    {:class "function-list"}
+    (dom/ul
+     (for [function (sort-by :name (:functions (om/props this)))]
+       (dom/li {:key (str (:offset function))
+                :class "function"}
+               (dom/span {:class "offset"}
+                         (hex-format (:offset function)))
+               ": "
+               (dom/span {:class "name"}
+                         (:name function))))))))
+
+
+(def function-list (om/factory FunctionList))
+
+
 (defui App
   Object
   (render
    [this]
-   (canvas
-    {:props :none}
-    (basicblock {:insns [{:addr 0x412B4F :bytes "53" :mnem "push" :operands "ebx"}
-                         {:addr 0x412b50 :bytes "6A 01" :mnem "push" :operands "1" :comments "size_t"}
-                         {:addr 0x412b52 :bytes "e8 06 18 00 00" :mnem "call" :operands "??2@YAPAXI@Z" :comments "operator new(uint)"}
-                         {:addr 0x412b57 :bytes "8b d8" :mnem "cmov" :operands "ebx, eax"}]}))))
+   (dom/div
+    {:class "app"}
+    (function-list (om/props this))
+    (canvas
+     {:props :none}
+     (basicblock {:insns [{:addr 0x412B4F :bytes "53" :mnem "push" :operands "ebx"}
+                          {:addr 0x412b50 :bytes "6A 01" :mnem "push" :operands "1" :comments "size_t"}
+                          {:addr 0x412b52 :bytes "e8 06 18 00 00" :mnem "call" :operands "??2@YAPAXI@Z" :comments "operator new(uint)"}
+                          {:addr 0x412b57 :bytes "8b d8" :mnem "cmov" :operands "ebx, eax"}]})))))
 
 
 (def app (om/factory App))
 
 
-(js/ReactDOM.render
- (app {})
- (gdom/getElement "app"))
+(defn- render!
+  ([model]
+   (cmn/d "render!")
+   (js/ReactDOM.render
+     (app @model)
+     (gdom/getElement "app")))
+  ([model changes]
+   (swap! model merge changes)
+   (render! model)))
+
+(render! (atom {}))
+
+
+(defn ensure-init
+  []
+  (let [ret (chan)]
+    (go
+      (let [aflj (<! (r2/get-functions2))]
+        (if (= :success (:status aflj))
+          (do
+            (prn "already init'd")
+            (put! ret true)) ;
+          (let [_ (prn "not yet init'd")
+                _ (prn "initializing...")
+                aaaa (<! (r2/analyze-all2))
+                _ (prn "initialized!")]
+            (put! ret true)))))
+    ret))
+
+
+(let [model (atom {})]
+  (go
+    (let [_ (<! (ensure-init))
+          aflj (<! (r2/get-functions2))]
+      (render! model {:functions (:response aflj)}))))
