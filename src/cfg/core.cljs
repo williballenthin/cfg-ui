@@ -104,16 +104,20 @@
      (dom/table
       (dom/thead)
       (dom/tbody
-       (for [insn (:insns (om/props this))]
+       (for [insn (:instructions (om/props this))]
          (dom/tr {:key (str (:addr insn)) :class "insn"}
                  (dom/td {:class "addr"}
                          (hex-format (:addr insn)))
+                 (dom/td {:class "padding-1"})
                  (dom/td {:class "bytes"}
                          (string/upper-case (:bytes insn)))
+                 (dom/td {:class "padding-2"})
                  (dom/td {:class "mnem"}
                          (:mnem insn))
+                 (dom/td {:class "padding-3"})
                  (dom/td {:class "operands"}
                          (:operands insn))
+                 (dom/td {:class "padding-4"})
                  (dom/td {:class "comments"}
                          (when (and (:comments insn)
                                     (not= "" (:comments insn)))
@@ -176,6 +180,15 @@
 (declare update-model!)
 
 
+(defn r2->insn
+  [insn]
+  {:addr (:addr insn)
+   :bytes (:bytes insn)
+   :mnem (:mnemonic insn)
+   :operands (subs (:opcode insn) (inc (count (:mnemonic insn))))
+   :comments nil})
+
+
 (defui App
   Object
   (render
@@ -193,13 +206,13 @@
      (basic-block-list
       (om/computed (om/props this)
                    {:select-bb (fn [bbva insn-count]
-                                 (cmn/d bbva))})))
+                                 (go
+                                   (let [aoj (<! (r2/get-instructions bbva insn-count))]
+                                     ;; TODO: also get comments for these instructions
+                                     (update-model! {:instructions (map r2->insn (:response aoj))}))))})))
     (canvas
      {:props :none}
-     (basicblock {:insns [{:addr 0x412B4F :bytes "53" :mnem "push" :operands "ebx"}
-                          {:addr 0x412b50 :bytes "6A 01" :mnem "push" :operands "1" :comments "size_t"}
-                          {:addr 0x412b52 :bytes "e8 06 18 00 00" :mnem "call" :operands "??2@YAPAXI@Z" :comments "operator new(uint)"}
-                          {:addr 0x412b57 :bytes "8b d8" :mnem "cmov" :operands "ebx, eax"}]})))))
+     (basicblock (om/props this))))))
 
 
 (def app (om/factory App))
@@ -208,6 +221,7 @@
 (defn- render!
   ([model]
    (cmn/d "render!")
+   (cmn/d @model)
    (js/ReactDOM.render
      (app @model)
      (gdom/getElement "app")))
