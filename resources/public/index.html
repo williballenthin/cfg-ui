@@ -146,10 +146,15 @@
             color: #5C7080;
           }
 
-          div.function-list {
+          div.panels {
             position: relative;
             float: right;
             height: 0px;
+          }
+
+          div.function-list h3.title,
+          div.bb-list h3.title {
+            border-bottom: 1px solid #182026;
           }
 
           div.function-list ul {
@@ -161,6 +166,16 @@
           div.function-list ul li.function span.name {
             font-family: monospace;
           }
+
+          div.bb-list ul {
+            height: 500px;
+            overflow-y: scroll;
+          }
+
+          div.bb-list ul li.function span.offset {
+            font-family: monospace;
+          }
+
 
         </style>
     </head>

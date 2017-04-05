@@ -68,3 +68,10 @@
   ;; list all functions: afl
   (http GET (api-url "/aflj")))
 
+
+(defn get-basic-blocks2
+  [fva]
+  ;; list all functions: afl
+  (http GET (api-url (str "/s " fva "; afbj"))))
+
+

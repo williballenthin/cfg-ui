@@ -127,20 +127,57 @@
   Object
   (render
    [this]
-   (dom/div
-    {:class "function-list"}
-    (dom/ul
-     (for [function (sort-by :name (:functions (om/props this)))]
-       (dom/li {:key (str (:offset function))
-                :class "function"}
-               (dom/span {:class "offset"}
-                         (hex-format (:offset function)))
-               ": "
-               (dom/span {:class "name"}
-                         (:name function))))))))
-
+   (let [props (om/props this)
+         functions (:functions props)
+         functions (sort-by :name functions)
+         on-select-function (:select-function (om/get-computed this))]
+     (dom/div
+      {:class "function-list"}
+      (dom/h3 {:class "title"}
+              "functions (" (count functions) " total):")
+      (dom/ul
+       (for [function functions]
+         (dom/li {:key (str (:offset function))
+                  :class "function"
+                  :onClick #(on-select-function (:offset function))}
+                 (dom/span {:class "offset"}
+                           (hex-format (:offset function)))
+                 ": "
+                 (dom/span {:class "name"}
+                           (:name function)))))))))
 
 (def function-list (om/factory FunctionList))
+
+
+(defui BasicBlockList
+  Object
+  (render
+   [this]
+   (prn "render bb")
+   (let [props (om/props this)
+         _ (cmn/d props)
+         bbs (:basic-blocks props)
+         _ (cmn/d bbs)
+         bbs (sort-by :addr bbs)
+         on-select-bb (:select-bb (om/get-computed this))]
+     (cmn/d bbs)
+     (dom/div
+      {:class "bb-list"}
+      (dom/h3 {:class "title"}
+              "basic blocks (" (count bbs) " total):")
+      (dom/ul
+       (for [bb bbs]
+         (dom/li {:key (str (:addr bb))
+                  :class "bb"
+                  :onClick #(on-select-bb (:addr bb))}
+                 (dom/span {:class "offset"}
+                           (hex-format (:addr bb))))))))))
+
+(def basic-block-list (om/factory BasicBlockList))
+
+
+(def *model* (atom {}))
+(declare update-model!)
 
 
 (defui App
@@ -149,7 +186,18 @@
    [this]
    (dom/div
     {:class "app"}
-    (function-list (om/props this))
+    (dom/div
+     {:class "panels"}
+     (function-list
+      (om/computed (om/props this)
+                   {:select-function (fn [fva]
+                                       (go
+                                         (let [afbj (<! (r2/get-basic-blocks2 fva))]
+                                           (update-model! {:basic-blocks (:response afbj)}))))}))
+     (basic-block-list
+      (om/computed (om/props this)
+                   {:select-bb (fn [bbva]
+                                 (cmn/d bbva))})))
     (canvas
      {:props :none}
      (basicblock {:insns [{:addr 0x412B4F :bytes "53" :mnem "push" :operands "ebx"}
@@ -171,7 +219,7 @@
    (swap! model merge changes)
    (render! model)))
 
-(render! (atom {}))
+(render! *model*)
 
 
 (defn ensure-init
@@ -191,8 +239,12 @@
     ret))
 
 
-(let [model (atom {})]
-  (go
-    (let [_ (<! (ensure-init))
-          aflj (<! (r2/get-functions2))]
-      (render! model {:functions (:response aflj)}))))
+(defn update-model!
+  [new-stuff]
+  (render! *model* new-stuff))
+
+
+(go
+  (let [_ (<! (ensure-init))
+        aflj (<! (r2/get-functions2))]
+    (update-model! {:functions (:response aflj)})))
