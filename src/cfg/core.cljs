@@ -148,7 +148,11 @@
                            (hex-format (:offset function)))
                  ": "
                  (dom/span {:class "name"}
-                           (:name function)))))))))
+                           (:name function))
+                 " ("
+                 (dom/span {:class "basic-block-count"}
+                           (:nbbs function))
+                 ")")))))))
 
 (def function-list (om/factory FunctionList))
 
@@ -237,17 +241,70 @@
                 [:src (:addr bb) :dst (:fail bb) :type :fail])))))
 
 
+(def dagre (js* "dagre"))
+
+
+(defn make-dagre
+  []
+  (let [Graph (aget dagre "graphlib" "Graph")
+        g (Graph.)]
+    (.setGraph g #js{"nodesep" 100
+                     "edgesep" 50
+                     "ranksep" 75})
+    (.setDefaultEdgeLabel g (fn [x] #js{}))
+    g))
+
+
+(defn add-node!
+  [g bb]
+  (.setNode g (str (:addr bb)) #js{"width" (* 13 (:width bb))
+                                   "height" (* 13 (:height bb))
+                                   "label" (str (:addr bb))}))
+
+
+(defn add-edge!
+  [g edge]
+  (.setEdge g (str (:src edge)) (str (:dst edge))))
+
+
+(defn scale-props
+  [bb]
+  (merge bb {"x" (/ (get bb "x") 13)
+             "y" (/ (get bb "y") 13)
+             "height" (/ (get bb "height") 13)
+             "width" (/ (get bb "width") 13)}))
+
+
+(defn get-nodes
+  [g]
+  (map scale-props (vals (js->clj (aget g "_nodes")))))
+
+
+(defn get-edges
+  [g]
+  (vals (js->clj (aget g "_edgeLabels"))))
+
+
+(def layout! (aget dagre "layout"))
+
+
 (defn layout-cfg
   [basic-blocks]
-  (cmn/d basic-blocks)
-  (let [edges (compute-edges basic-blocks)]
-    (cmn/d edges))
-  (map-indexed (fn [i bb]
-                 (merge bb {:x i :y i
-                            :width (compute-bb-width bb)
-                            :height (compute-bb-height bb)}))
-               basic-blocks))
-
+  (when (< 0 (count (remove nil? basic-blocks)))
+    (let [edges (compute-edges basic-blocks)
+          bbs (map #(assoc % :width (compute-bb-width %)) basic-blocks)
+          bbs (map #(assoc % :height (compute-bb-height %)) bbs)
+          g (make-dagre)]
+      (doseq [bb bbs]
+        (add-node! g bb))
+      (doseq [edge edges]
+        (add-edge! g edge))
+      (layout! g)
+      (let [positions (cmn/index-by #(js/parseInt (get % "label")) (get-nodes g))]
+        (for [bb bbs]
+          (let [pos (get positions (:addr bb))]
+            (merge bb {:x (get pos "x")
+                       :y (get pos "y")})))))))
 
 (defn positioned
   [props children]
@@ -257,7 +314,6 @@
         h (:height props)
         top (str y "em")
         left (str x "em")]
-    (prn x y top left w h)
     (dom/div {:class "laid-out"
               :style {:top top
                       :left left}}
