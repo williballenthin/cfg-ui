@@ -105,6 +105,8 @@
           div.canvas {
             width: 10000px;
             height: 10000px;
+            /* need to specify this before we start using em for everything */
+            font-family: monospace;
           }
 
           div.canvas div.laid-out {
@@ -119,9 +121,9 @@
             /* don't make bb wider than they need to be */
             display: inline-block;
             border: 1px solid #182026;
+            box-shadow: 3px 3px 5px #A7B6C2;
 
             font-family: monospace;
-            box-shadow: 3px 3px 5px #A7B6C2;
           }
 
           div.basic-block div.bb-header {

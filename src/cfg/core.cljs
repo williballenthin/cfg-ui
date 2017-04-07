@@ -190,10 +190,47 @@
    :comments nil})
 
 
+(defn compute-bb-height
+  "
+  units: em
+  "
+  [bb]
+  (let [insn-count (count (:instructions bb))
+        ;; assume header size is 1em,
+        ;; which is defined in the css style.
+        header-size 1]
+    (+ header-size insn-count)))
+
+
+(defn compute-bb-width
+  "
+  units: em
+  "
+  [bb]
+  ;; the following constants are defined in the css style.
+  (let [padding-1-size 1
+        padding-2-size 1
+        padding-3-size 1
+        padding-4-size 1
+        bytes-size 12
+        mnem-size 6
+        operands-size (apply max (map #(count (:operands %)) (:instructions bb)))
+        comments-size (apply max (map #(count (:comments %)) (:instructions bb)))]
+    (+ padding-1-size
+       padding-2-size
+       padding-3-size
+       padding-4-size
+       bytes-size
+       mnem-size
+       operands-size)))
+
+
 (defn layout-cfg
   [basic-blocks]
   (map-indexed (fn [i bb]
-                 (assoc bb :x i :y i :width 0 :height 0))
+                 (merge bb {:x i :y i
+                            :width (compute-bb-width bb)
+                            :height (compute-bb-height bb)}))
                basic-blocks))
 
 
@@ -201,12 +238,14 @@
   [props children]
   (let [x (:x props)
         y (:y props)
+        w (:width props)
+        h (:height props)
         top (str y "em")
         left (str x "em")]
+    (prn x y top left w h)
     (dom/div {:class "laid-out"
               :style {:top top
-                      :left left
-                      :color "blue"}}
+                      :left left}}
              children)))
 
 
