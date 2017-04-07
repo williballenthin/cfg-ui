@@ -9,7 +9,7 @@
   []
   (let [Graph (aget dagre "graphlib" "Graph")
         g (Graph.)]
-    (.setGraph g #js{"nodesep" 10
+    (.setGraph g #js{"nodesep" 5
                      "edgesep" 10
                      "ranksep" 10})
     (.setDefaultEdgeLabel g (fn [x] #js{}))
