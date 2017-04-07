@@ -119,6 +119,9 @@
             float: left;
             height: 0px;
             display: inline;
+
+            /* attempt to draw lines behind bbs, to hide slight issues */
+            z-index: 1;
           }
 
           div.canvas div.line {
@@ -127,7 +130,7 @@
             position: absolute;
             top: 0px;
             left: 0px;
-          }
+         }
 
           div.canvas div.edge {
             /* attempt to draw lines behind bbs, to hide slight issues */
