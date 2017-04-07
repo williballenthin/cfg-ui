@@ -6,7 +6,6 @@
             [goog.string :as gstring]
             [goog.string.format]
             [cljs.pprint]
-            [om.util]
             [om-tools.dom :as dom]
             [om.next :as om :refer-macros [defui]]
             ;; include this first so it gets installed early
@@ -265,7 +264,13 @@
                 {:src (:addr bb) :dst (:jump bb) :type :jump}))
             (for [bb basic-blocks]
               (when (:fail bb)
-                [:src (:addr bb) :dst (:fail bb) :type :fail])))))
+                {:src (:addr bb) :dst (:fail bb) :type :fail})))))
+
+
+(defn dump-edges
+  [edges]
+  (doseq [edge edges]
+    (prn (str (:type edge) " " (hex-format (:src edge)) " -> " (hex-format (:dst edge))))))
 
 
 (defn layout-cfg
@@ -275,6 +280,7 @@
           bbs (map #(assoc % :width (compute-bb-width %)) basic-blocks)
           bbs (map #(assoc % :height (compute-bb-height %)) bbs)
           g (dagre/make)]
+      (dump-edges edges)
       (doseq [bb bbs]
         (dagre/add-node! g bb))
       (doseq [edge edges]
@@ -313,6 +319,7 @@
             x2 (:x end)
             y2 (:y end)]
         (line x1 y1 x2 y2)))))
+
 
 (defn app
   [props]
