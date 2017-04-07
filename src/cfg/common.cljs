@@ -14,3 +14,31 @@
   "
   [msg]
   (.log js/console msg))
+
+
+(defn update-values
+  "
+  apply a function to update all the values in the given map.
+
+  via: http://blog.jayfields.com/2011/08/clojure-apply-function-to-each-value-of.html
+  "
+  [m f & args]
+  (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
+
+
+(defn update-keys
+  "
+  apply a function to update all the keys in the given map.
+  "
+  [m f & args]
+  (reduce (fn [r [k v]] (assoc r (apply f k args) v)) {} m))
+
+
+(defn index-by
+  "
+  create a map from the given sequence, using `key` to extract the key.
+  the value is the first element with the extracted key.
+  "
+  [key col]
+  (update-values (group-by key col) first))
+

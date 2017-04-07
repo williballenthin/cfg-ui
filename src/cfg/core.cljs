@@ -169,14 +169,15 @@
        (for [bb bbs]
          (dom/li {:key (str (:addr bb))
                   :class "bb"
-                  :onClick #(on-select-bb (:addr bb) (:ninstr bb))}
+                  :onClick #(on-select-bb (:addr bb))}
                  (dom/span {:class "offset"}
                            (hex-format (:addr bb))))))))))
 
 (def basic-block-list (om/factory BasicBlockList))
 
 
-(def *model* (atom {}))
+(def *model* (atom {:functions {}
+                    :basic-blocks {}}))
 (declare update-model!)
 
 
@@ -198,21 +199,35 @@
     (dom/div
      {:class "panels"}
      (function-list
-      (om/computed (om/props this)
+      (om/computed {:functions (vals (:functions (om/props this)))}
                    {:select-function (fn [fva]
+                                       (update-model! {:selected-function fva})
                                        (go
-                                         (let [afbj (<! (r2/get-basic-blocks fva))]
-                                           (update-model! {:basic-blocks (:response afbj)}))))}))
-     (basic-block-list
-      (om/computed (om/props this)
-                   {:select-bb (fn [bbva insn-count]
-                                 (go
-                                   (let [aoj (<! (r2/get-instructions bbva insn-count))]
-                                     ;; TODO: also get comments for these instructions
-                                     (update-model! {:instructions (map r2->insn (:response aoj))}))))})))
-    (canvas
-     {:props :none}
-     (basicblock (om/props this))))))
+                                         (let [afbj (<! (r2/get-basic-blocks fva))
+                                               basic-blocks (:response afbj)]
+                                           (update-model! [:functions fva :basic-blocks] basic-blocks)
+                                           (doseq [basic-block basic-blocks]
+                                             (go
+                                               (let [addr (:addr basic-block)
+                                                     ninstr (:ninstr basic-block)
+                                                     aoj (<! (r2/get-instructions addr ninstr))
+                                                     insns (map r2->insn (:response aoj))
+                                                     changes (assoc basic-block :instructions insns)]
+                                                 (update-model! [:basic-blocks addr] changes)))))))}))
+     (when (:selected-function (om/props this))
+       (let [fva (:selected-function (om/props this))
+             function (get-in (om/props this) [:functions fva])
+             basic-blocks (:basic-blocks function)]
+         (basic-block-list
+          (om/computed {:basic-blocks basic-blocks}
+                       {:select-bb #(update-model! {:selected-basic-block %})})))))
+    (when (:selected-basic-block (om/props this))
+      (let [bbva (:selected-basic-block (om/props this))
+            bb (get-in (om/props this) [:basic-blocks bbva])
+            insns (:instructions bb)]
+        (canvas
+         {:props :none}
+         (basicblock {:instructions insns})))))))
 
 
 (def app (om/factory App))
@@ -220,14 +235,30 @@
 
 (defn- render!
   ([model]
-   (cmn/d "render!")
-   (cmn/d @model)
+   (prn "render!")
    (js/ReactDOM.render
      (app @model)
      (gdom/getElement "app")))
   ([model changes]
-   (swap! model merge changes)
+   (swap! model (fn [model]
+                  (merge model changes)))
+   (render! model))
+  ([model path changes]
+   (swap! model (fn [model]
+                  (update-in model path (fn [cur]
+                                          (if cur
+                                            (merge cur changes)
+                                            changes)))))
    (render! model)))
+
+
+(defn update-model!
+  ([new-stuff]
+   (render! *model* new-stuff))
+  ([path new-stuff]
+   (render! *model* path new-stuff)))
+
+
 
 (render! *model*)
 
@@ -249,12 +280,8 @@
     ret))
 
 
-(defn update-model!
-  [new-stuff]
-  (render! *model* new-stuff))
-
 
 (go
   (let [_ (<! (ensure-init))
         aflj (<! (r2/get-functions))]
-    (update-model! {:functions (:response aflj)})))
+    (update-model! [:functions] (cmn/index-by :offset (:response aflj)))))
