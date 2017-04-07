@@ -186,12 +186,14 @@
 (def atan2 (.-atan2 js/Math))
 
 
+;; these line drawing algorithms ripped directly from:
+;;  http://stackoverflow.com/questions/4270485/drawing-lines-on-html-page
+
 (defn geoline
   [x y length angle]
   (dom/div
    {:class "line"
     :style {:width (str length "em")
-            ;;:transform (str "rotate(" angle "rad) translate(" (- x) "em, " (- y) "em)")}}))
             :transform (str "rotate(" angle "rad)")
             :top (str y "em")
             :left (str x "em")}}))
@@ -210,8 +212,6 @@
         x (- sx (/ c 2))
         y sy
         alpha (- PI (atan2 (- b) a))]
-    (prn x1 y1 x2 y2)
-    (prn a b c sx sy x y alpha)
     (geoline x y c alpha)))
 
 
@@ -295,10 +295,12 @@
         (dagre/add-edge! g edge))
       (dagre/layout! g)
       (let [positions (cmn/index-by :label (dagre/get-nodes g))]
-        (for [bb bbs]
-          (let [pos (get positions (:addr bb))]
-            (merge bb {:x (:x pos)
-                       :y (:y pos)})))))))
+        {:nodes (for [bb bbs]
+                  (let [pos (get positions (:addr bb))]
+                    (merge bb {:x (:x pos)
+                               :y (:y pos)})))
+         :edges (dagre/get-edges g)}))))
+
 
 (defn positioned
   [props children]
@@ -306,12 +308,25 @@
         y (:y props)
         w (:width props)
         h (:height props)
-        top (str y "em")
-        left (str x "em")]
+        top (str (- y (/ h 2)) "em")
+        left (str (- x  (/ w 2)) "em")]
     (dom/div {:class "laid-out"
               :style {:top top
                       :left left}}
              children)))
+
+
+(defn edge-line
+  [edge]
+  (multi-line {}
+    (for [pair (partition 2 1 (:points edge))]
+      (let [start (first pair)
+            end (second pair)
+            x1 (:x start)
+            y1 (:y start)
+            x2 (:x end)
+            y2 (:y end)]
+        (line x1 y1 x2 y2)))))
 
 
 (defui App
@@ -352,11 +367,13 @@
             function (get-in props [:functions fva])
             basic-blocks (:basic-blocks function)
             basic-blocks (map #(get-in props [:basic-blocks (:addr %)]) basic-blocks)
-            basic-blocks (layout-cfg basic-blocks)]
+            g (layout-cfg basic-blocks)]
         (canvas
          {}
-         [(for [bb basic-blocks]
-           (positioned bb (basicblock bb)))]))
+         [(for [bb (:nodes g)]
+           (positioned bb (basicblock bb)))
+          (for [edge (:edges g)]
+           (edge-line edge))]))
       (canvas
        {}
        (multi-line {}

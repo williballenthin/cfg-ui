@@ -9,31 +9,24 @@
   []
   (let [Graph (aget dagre "graphlib" "Graph")
         g (Graph.)]
-    (.setGraph g #js{"nodesep" 100
-                     "edgesep" 50
-                     "ranksep" 75})
+    (.setGraph g #js{"nodesep" 10
+                     "edgesep" 10
+                     "ranksep" 10})
     (.setDefaultEdgeLabel g (fn [x] #js{}))
     g))
 
 
-(def scale-const 13)
-
-
-(defn- scale-up
-  [n]
-  (* scale-const n))
-
-
-(defn- scale-down
-  [n]
-  (/ n scale-const))
+(defn- cfg-bb->dagre
+  [bb]
+  #js{"width" (:width bb)
+      "height" (:height bb)
+      "label" (str (:addr bb))})
 
 
 (defn add-node!
   [g bb]
-  (.setNode g (str (:addr bb)) #js{"width" (scale-up (:width bb))
-                                   "height" (scale-up (:height bb))
-                                   "label" (str (:addr bb))}))
+  (let [bb' (cfg-bb->dagre bb)]
+    (.setNode g (aget bb' "label") bb')))
 
 
 (defn add-edge!
@@ -41,34 +34,34 @@
   (.setEdge g (str (:src edge)) (str (:dst edge))))
 
 
-(defn- scale-node-props
+(defn- dagre-bb->cfg
   [bb]
-  {:x (scale-down (get bb "x"))
-   :y (scale-down (get bb "y"))
-   :height (scale-down (get bb "height"))
-   :width (scale-down (get bb "width"))
+  {:x (get bb "x")
+   :y (get bb "y")
+   :height (get bb "height")
+   :width (get bb "width")
    :label (js/parseInt (get bb "label"))})
 
 
 (defn get-nodes
   [g]
-  (map scale-node-props (vals (js->clj (aget g "_nodes")))))
+  (map dagre-bb->cfg (vals (js->clj (aget g "_nodes")))))
 
 
-(defn- scale-point-props
+(defn- dagre-point->cfg
   [point]
-  {:x (scale-down (get point "x"))
-   :y (scale-down (get point "y"))})
+  {:x (get point "x")
+   :y (get point "y")})
 
 
-(defn- scale-edge-props
+(defn- dagre-edge->cfg
   [edge]
-  {:points (mapv scale-point-props (get edge "points"))})
+  {:points (mapv dagre-point->cfg (get edge "points"))})
 
 
 (defn get-edges
   [g]
-  (mapv scale-edge-props (vals (js->clj (aget g "_edgeLabels")))))
+  (mapv dagre-edge->cfg (vals (js->clj (aget g "_edgeLabels")))))
 
 
 (def layout! (aget dagre "layout"))
