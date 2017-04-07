@@ -93,92 +93,78 @@
   (str "0x" (string/upper-case (.toString n 16))))
 
 
-(defui BasicBlock
-  Object
-  (render
-   [this]
+(defn basicblock
+  [props]
+  (dom/div
+   {:class "basic-block"}
+   (dom/div {:class "bb-header"})
    (dom/div
-    {:class "basic-block"}
-    (dom/div {:class "bb-header"})
+    {:class "bb-content"}
+    (dom/table
+     (dom/thead)
+     (dom/tbody
+      (for [insn (:instructions props)]
+        (dom/tr {:key (str (:addr insn)) :class "insn"}
+                (dom/td {:class "addr"}
+                        (hex-format (:addr insn)))
+                (dom/td {:class "padding-1"})
+                (dom/td {:class "bytes"}
+                        (string/upper-case (:bytes insn)))
+                (dom/td {:class "padding-2"})
+                (dom/td {:class "mnem"}
+                        (:mnem insn))
+                (dom/td {:class "padding-3"})
+                (dom/td {:class "operands"}
+                        (:operands insn))
+                (dom/td {:class "padding-4"})
+                (dom/td {:class "comments"}
+                        (when (and (:comments insn)
+                                   (not= "" (:comments insn)))
+                          (str ";  " (:comments insn)))))))))))
+
+
+
+(defn function-list
+  [props]
+  (let [functions (:functions props)
+        functions (sort-by :name functions)
+        on-select-function (:select-function props)]
     (dom/div
-     {:class "bb-content"}
-     (dom/table
-      (dom/thead)
-      (dom/tbody
-       (for [insn (:instructions (om/props this))]
-         (dom/tr {:key (str (:addr insn)) :class "insn"}
-                 (dom/td {:class "addr"}
-                         (hex-format (:addr insn)))
-                 (dom/td {:class "padding-1"})
-                 (dom/td {:class "bytes"}
-                         (string/upper-case (:bytes insn)))
-                 (dom/td {:class "padding-2"})
-                 (dom/td {:class "mnem"}
-                         (:mnem insn))
-                 (dom/td {:class "padding-3"})
-                 (dom/td {:class "operands"}
-                         (:operands insn))
-                 (dom/td {:class "padding-4"})
-                 (dom/td {:class "comments"}
-                         (when (and (:comments insn)
-                                    (not= "" (:comments insn)))
-                           (str ";  " (:comments insn))))))))))))
+     {:class "function-list"}
+     (dom/h3 {:class "title"}
+             "functions (" (count functions) " total):")
+     (dom/ul
+      (for [function functions]
+        (dom/li {:key (str (:offset function))
+                 :class "function"
+                 :onClick #(on-select-function (:offset function))}
+                (dom/span {:class "offset"}
+                          (hex-format (:offset function)))
+                ": "
+                (dom/span {:class "name"}
+                          (:name function))
+                " ("
+                (dom/span {:class "basic-block-count"}
+                          (:nbbs function))
+                ")"))))))
 
 
-(def basicblock (om/factory BasicBlock))
-
-
-(defui FunctionList
-  Object
-  (render
-   [this]
-   (let [props (om/props this)
-         functions (:functions props)
-         functions (sort-by :name functions)
-         on-select-function (:select-function (om/get-computed this))]
-     (dom/div
-      {:class "function-list"}
-      (dom/h3 {:class "title"}
-              "functions (" (count functions) " total):")
-      (dom/ul
-       (for [function functions]
-         (dom/li {:key (str (:offset function))
-                  :class "function"
-                  :onClick #(on-select-function (:offset function))}
-                 (dom/span {:class "offset"}
-                           (hex-format (:offset function)))
-                 ": "
-                 (dom/span {:class "name"}
-                           (:name function))
-                 " ("
-                 (dom/span {:class "basic-block-count"}
-                           (:nbbs function))
-                 ")")))))))
-
-(def function-list (om/factory FunctionList))
-
-
-(defui BasicBlockList
-  Object
-  (render
-   [this]
-   (let [props (om/props this)
-         bbs (:basic-blocks props)
-         bbs (sort-by :addr bbs)
-         on-select-bb (:select-bb (om/get-computed this))]
-     (dom/div
-      {:class "bb-list"}
-      (dom/h3 {:class "title"}
-              "basic blocks (" (count bbs) " total):")
-      (dom/ul
-       (for [bb bbs]
-         (dom/li {:key (str (:addr bb))
-                  :class "bb"
-                  :onClick #(on-select-bb (:addr bb))}
-                 (dom/span {:class "offset"}
-                           (hex-format (:addr bb))))))))))
-
-(def basic-block-list (om/factory BasicBlockList))
+(defn basic-block-list
+  [props]
+  (let [bbs (:basic-blocks props)
+        bbs (sort-by :addr bbs)
+        on-select-bb (:select-bb props)]
+    (dom/div
+     {:class "bb-list"}
+     (dom/h3 {:class "title"}
+             "basic blocks (" (count bbs) " total):")
+     (dom/ul
+      (for [bb bbs]
+        (dom/li {:key (str (:addr bb))
+                 :class "bb"
+                 :onClick #(on-select-bb (:addr bb))}
+                (dom/span {:class "offset"}
+                          (hex-format (:addr bb)))))))))
 
 
 (def sqrt (.-sqrt js/Math))
@@ -328,61 +314,46 @@
             y2 (:y end)]
         (line x1 y1 x2 y2)))))
 
-
-(defui App
-  Object
-  (render
-   [this]
+(defn app
+  [props]
+  (dom/div
+   {:class "app"}
    (dom/div
-    {:class "app"}
-    (dom/div
-     {:class "panels"}
-     (function-list
-      (om/computed {:functions (vals (:functions (om/props this)))}
-                   {:select-function (fn [fva]
-                                       (update-model! {:selected-function fva})
-                                       (go
-                                         (let [afbj (<! (r2/get-basic-blocks fva))
-                                               basic-blocks (:response afbj)]
-                                           (update-model! [:functions fva :basic-blocks] basic-blocks)
-                                           (doseq [basic-block basic-blocks]
-                                             (go
-                                               (let [addr (:addr basic-block)
-                                                     ninstr (:ninstr basic-block)
-                                                     aoj (<! (r2/get-instructions addr ninstr))
-                                                     insns (map r2->insn (:response aoj))
-                                                     changes (assoc basic-block :instructions insns)]
-                                                 (update-model! [:basic-blocks addr] changes)))))))}))
-     (let [props (om/props this)]
-       (when (:selected-function props)
-         (let [fva (:selected-function props)
-               function (get-in props [:functions fva])
-               basic-blocks (:basic-blocks function)]
-           (basic-block-list
-            (om/computed {:basic-blocks basic-blocks}
-                         {:select-bb #(update-model! {:selected-basic-block %})}))))))
-    (if (:selected-function (om/props this))
-      (let [props (om/props this)
-            fva (:selected-function props)
+    {:class "panels"}
+    (function-list
+     {:functions (vals (:functions props))
+      :select-function (fn [fva]
+                         (update-model! {:selected-function fva})
+                         (go
+                           (let [afbj (<! (r2/get-basic-blocks fva))
+                                 basic-blocks (:response afbj)]
+                             (update-model! [:functions fva :basic-blocks] basic-blocks)
+                             (doseq [basic-block basic-blocks]
+                               (go
+                                 (let [addr (:addr basic-block)
+                                       ninstr (:ninstr basic-block)
+                                       aoj (<! (r2/get-instructions addr ninstr))
+                                       insns (map r2->insn (:response aoj))
+                                       changes (assoc basic-block :instructions insns)]
+                                   (update-model! [:basic-blocks addr] changes)))))))})
+    (when (:selected-function props)
+      (let [fva (:selected-function props)
             function (get-in props [:functions fva])
-            basic-blocks (:basic-blocks function)
-            basic-blocks (map #(get-in props [:basic-blocks (:addr %)]) basic-blocks)
-            g (layout-cfg basic-blocks)]
-        (canvas
-         {}
-         [(for [bb (:nodes g)]
+            basic-blocks (:basic-blocks function)]
+        (basic-block-list {:basic-blocks basic-blocks
+                           :select-bb #(update-model! {:selected-basic-block %})}))))
+   (when (:selected-function props)
+     (let [fva (:selected-function props)
+           function (get-in props [:functions fva])
+           basic-blocks (:basic-blocks function)
+           basic-blocks (map #(get-in props [:basic-blocks (:addr %)]) basic-blocks)
+           g (layout-cfg basic-blocks)]
+       (canvas
+        {}
+        [(for [bb (:nodes g)]
            (positioned bb (basicblock bb)))
-          (for [edge (:edges g)]
-           (edge-line edge))]))
-      (canvas
-       {}
-       (multi-line {}
-         [(line 1 1 6 9)
-          (line 1 1 9 6)]))))))
-
-
-
-(def app (om/factory App))
+         (for [edge (:edges g)]
+           (edge-line edge))])))))
 
 
 (defn- render!
