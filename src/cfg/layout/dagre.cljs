@@ -31,7 +31,7 @@
 
 (defn add-edge!
   [g edge]
-  (.setEdge g (str (:src edge)) (str (:dst edge))))
+  (.setEdge g (str (:src edge)) (str (:dst edge)) #js{"type" (:type edge)}))
 
 
 (defn- dagre-bb->cfg
@@ -56,7 +56,8 @@
 
 (defn- dagre-edge->cfg
   [edge]
-  {:points (mapv dagre-point->cfg (get edge "points"))})
+  {:points (mapv dagre-point->cfg (get edge "points"))
+   :type (get edge "type")})
 
 
 (defn get-edges

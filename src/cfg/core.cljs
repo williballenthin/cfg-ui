@@ -202,8 +202,12 @@
 
 (defn multi-line
   [props children]
-  (dom/div {:class "multi-line"}
-           children))
+  (let [class (:class props)
+        class (if class
+                (str "multi-line " class)
+                "multi-line")]
+    (dom/div {:class class}
+             children)))
 
 
 (def *model* (atom {:functions {}
@@ -310,15 +314,18 @@
 
 (defn edge-line
   [edge]
-  (multi-line {}
-    (for [pair (partition 2 1 (:points edge))]
-      (let [start (first pair)
-            end (second pair)
-            x1 (:x start)
-            y1 (:y start)
-            x2 (:x end)
-            y2 (:y end)]
-        (line x1 y1 x2 y2)))))
+  (multi-line
+   {:class (condp = (:type edge)
+             :fail "edge-false"
+             "edge-true")}
+   (for [pair (partition 2 1 (:points edge))]
+     (let [start (first pair)
+           end (second pair)
+           x1 (:x start)
+           y1 (:y start)
+           x2 (:x end)
+           y2 (:y end)]
+       (line x1 y1 x2 y2)))))
 
 
 (defn app
