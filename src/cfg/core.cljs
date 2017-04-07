@@ -190,6 +190,26 @@
    :comments nil})
 
 
+(defn layout-cfg
+  [basic-blocks]
+  (map-indexed (fn [i bb]
+                 (assoc bb :x i :y i :width 0 :height 0))
+               basic-blocks))
+
+
+(defn positioned
+  [props children]
+  (let [x (:x props)
+        y (:y props)
+        top (str y "em")
+        left (str x "em")]
+    (dom/div {:class "laid-out"
+              :style {:top top
+                      :left left
+                      :color "blue"}}
+             children)))
+
+
 (defui App
   Object
   (render
@@ -226,13 +246,13 @@
       (let [props (om/props this)
             fva (:selected-function props)
             function (get-in props [:functions fva])
-            basic-blocks (:basic-blocks function)]
+            basic-blocks (:basic-blocks function)
+            basic-blocks (map #(get-in props [:basic-blocks (:addr %)]) basic-blocks)
+            basic-blocks (layout-cfg basic-blocks)]
         (canvas
          {}
          (for [bb basic-blocks]
-           (let [bbva (:addr bb)
-                 bb (get-in props [:basic-blocks bbva])]
-             (basicblock bb)))))))))
+           (positioned bb (basicblock bb)))))))))
 
 
 (def app (om/factory App))
@@ -242,8 +262,8 @@
   ([model]
    (prn "render!")
    (js/ReactDOM.render
-     (app @model)
-     (gdom/getElement "app")))
+    (app @model)
+    (gdom/getElement "app")))
   ([model changes]
    (swap! model (fn [model]
                   (merge model changes)))

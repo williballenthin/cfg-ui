@@ -107,15 +107,17 @@
             height: 10000px;
           }
 
+          div.canvas div.laid-out {
+            /* position relative to the origin of the canvas */
+            position: relative;
+            float: left;
+            height: 0px;
+            display: inline;
+          }
+
           div.basic-block {
             /* don't make bb wider than they need to be */
             display: inline-block;
-
-            /* position relative to the origin of the canvas */
-            position: absolute;
-            top: 0px;
-            left: 0px;
-
             border: 1px solid #182026;
 
             font-family: monospace;
