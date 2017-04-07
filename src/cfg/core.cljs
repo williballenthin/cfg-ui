@@ -12,7 +12,8 @@
             ;; include this first so it gets installed early
             [cfg.devtools :as cfg.devtools]
             [cfg.common :as cmn]
-            [cfg.api :as r2])
+            [cfg.api :as r2]
+            [cfg.layout.dagre :as dagre])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 
@@ -241,70 +242,23 @@
                 [:src (:addr bb) :dst (:fail bb) :type :fail])))))
 
 
-(def dagre (js* "dagre"))
-
-
-(defn make-dagre
-  []
-  (let [Graph (aget dagre "graphlib" "Graph")
-        g (Graph.)]
-    (.setGraph g #js{"nodesep" 100
-                     "edgesep" 50
-                     "ranksep" 75})
-    (.setDefaultEdgeLabel g (fn [x] #js{}))
-    g))
-
-
-(defn add-node!
-  [g bb]
-  (.setNode g (str (:addr bb)) #js{"width" (* 13 (:width bb))
-                                   "height" (* 13 (:height bb))
-                                   "label" (str (:addr bb))}))
-
-
-(defn add-edge!
-  [g edge]
-  (.setEdge g (str (:src edge)) (str (:dst edge))))
-
-
-(defn scale-props
-  [bb]
-  (merge bb {"x" (/ (get bb "x") 13)
-             "y" (/ (get bb "y") 13)
-             "height" (/ (get bb "height") 13)
-             "width" (/ (get bb "width") 13)}))
-
-
-(defn get-nodes
-  [g]
-  (map scale-props (vals (js->clj (aget g "_nodes")))))
-
-
-(defn get-edges
-  [g]
-  (vals (js->clj (aget g "_edgeLabels"))))
-
-
-(def layout! (aget dagre "layout"))
-
-
 (defn layout-cfg
   [basic-blocks]
   (when (< 0 (count (remove nil? basic-blocks)))
     (let [edges (compute-edges basic-blocks)
           bbs (map #(assoc % :width (compute-bb-width %)) basic-blocks)
           bbs (map #(assoc % :height (compute-bb-height %)) bbs)
-          g (make-dagre)]
+          g (dagre/make)]
       (doseq [bb bbs]
-        (add-node! g bb))
+        (dagre/add-node! g bb))
       (doseq [edge edges]
-        (add-edge! g edge))
-      (layout! g)
-      (let [positions (cmn/index-by #(js/parseInt (get % "label")) (get-nodes g))]
+        (dagre/add-edge! g edge))
+      (dagre/layout! g)
+      (let [positions (cmn/index-by :label (dagre/get-nodes g))]
         (for [bb bbs]
           (let [pos (get positions (:addr bb))]
-            (merge bb {:x (get pos "x")
-                       :y (get pos "y")})))))))
+            (merge bb {:x (:x pos)
+                       :y (:y pos)})))))))
 
 (defn positioned
   [props children]
