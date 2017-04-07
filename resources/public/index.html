@@ -130,7 +130,8 @@
           }
 
           div.canvas div.edge {
-
+            /* attempt to draw lines behind bbs, to hide slight issues */
+            z-index: 0;
           }
 
           div.canvas div.edge-true div.line {
@@ -148,6 +149,9 @@
             box-shadow: 3px 3px 5px #A7B6C2;
 
             font-family: monospace;
+
+            /* attempt to draw lines behind bbs, to hide slight issues */
+            z-index: 1;
           }
 
           div.basic-block div.bb-header {
