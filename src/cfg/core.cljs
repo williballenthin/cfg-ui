@@ -12,7 +12,8 @@
             [cfg.devtools :as cfg.devtools]
             [cfg.common :as cmn]
             [cfg.api :as r2]
-            [cfg.layout.dagre :as dagre])
+            [cfg.layout.dagre :as dagre]
+            [cfg.layout.klay :as klay])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 
@@ -283,13 +284,25 @@
     (let [edges (compute-edges basic-blocks)
           bbs (map #(assoc % :width (compute-bb-width %)) basic-blocks)
           bbs (map #(assoc % :height (compute-bb-height %)) bbs)
-          g (dagre/make)]
+          g (dagre/make)
+          g2 (klay/make)]
       (dump-edges edges)
       (doseq [bb bbs]
-        (dagre/add-node! g bb))
+        (dagre/add-node! g bb)
+        (klay/add-node! g2 bb))
       (doseq [edge edges]
-        (dagre/add-edge! g edge))
+        (dagre/add-edge! g edge)
+        (klay/add-edge! g2 edge))
       (dagre/layout! g)
+      (klay/layout g2
+                   (fn [r]
+                     (let [edges (klay/get-edges r)]
+                       (prn "klay: success!")
+                       (cmn/d r)
+                       (cmn/d edges)))
+                   (fn [e]
+                    (prn "klay: error")
+                    cmn/d))
       (let [positions (cmn/index-by :label (dagre/get-nodes g))]
         {:nodes (for [bb bbs]
                   (let [pos (get positions (:addr bb))]

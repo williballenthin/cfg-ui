@@ -11,3 +11,5 @@ pom.xml.asc
 .lein-failures
 .nrepl-port
 *~
+*/js/*
+resources/public/js/*
