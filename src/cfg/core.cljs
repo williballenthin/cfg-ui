@@ -214,20 +214,25 @@
                                                      insns (map r2->insn (:response aoj))
                                                      changes (assoc basic-block :instructions insns)]
                                                  (update-model! [:basic-blocks addr] changes)))))))}))
-     (when (:selected-function (om/props this))
-       (let [fva (:selected-function (om/props this))
-             function (get-in (om/props this) [:functions fva])
-             basic-blocks (:basic-blocks function)]
-         (basic-block-list
-          (om/computed {:basic-blocks basic-blocks}
-                       {:select-bb #(update-model! {:selected-basic-block %})})))))
-    (when (:selected-basic-block (om/props this))
-      (let [bbva (:selected-basic-block (om/props this))
-            bb (get-in (om/props this) [:basic-blocks bbva])
-            insns (:instructions bb)]
+     (let [props (om/props this)]
+       (when (:selected-function props)
+         (let [fva (:selected-function props)
+               function (get-in props [:functions fva])
+               basic-blocks (:basic-blocks function)]
+           (basic-block-list
+            (om/computed {:basic-blocks basic-blocks}
+                         {:select-bb #(update-model! {:selected-basic-block %})}))))))
+    (when (:selected-function (om/props this))
+      (let [props (om/props this)
+            fva (:selected-function props)
+            function (get-in props [:functions fva])
+            basic-blocks (:basic-blocks function)]
         (canvas
-         {:props :none}
-         (basicblock {:instructions insns})))))))
+         {}
+         (for [bb basic-blocks]
+           (let [bbva (:addr bb)
+                 bb (get-in props [:basic-blocks bbva])]
+             (basicblock bb)))))))))
 
 
 (def app (om/factory App))
