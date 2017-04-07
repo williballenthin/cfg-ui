@@ -225,8 +225,23 @@
        operands-size)))
 
 
+(defn compute-edges
+  [basic-blocks]
+  (remove nil?
+          (concat
+            (for [bb basic-blocks]
+              (when (:jump bb)
+                {:src (:addr bb) :dst (:jump bb) :type :jump}))
+            (for [bb basic-blocks]
+              (when (:fail bb)
+                [:src (:addr bb) :dst (:fail bb) :type :fail])))))
+
+
 (defn layout-cfg
   [basic-blocks]
+  (cmn/d basic-blocks)
+  (let [edges (compute-edges basic-blocks)]
+    (cmn/d edges))
   (map-indexed (fn [i bb]
                  (merge bb {:x i :y i
                             :width (compute-bb-width bb)
