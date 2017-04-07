@@ -41,7 +41,7 @@
   (.setEdge g (str (:src edge)) (str (:dst edge))))
 
 
-(defn scale-props
+(defn- scale-node-props
   [bb]
   {:x (scale-down (get bb "x"))
    :y (scale-down (get bb "y"))
@@ -52,12 +52,23 @@
 
 (defn get-nodes
   [g]
-  (map scale-props (vals (js->clj (aget g "_nodes")))))
+  (map scale-node-props (vals (js->clj (aget g "_nodes")))))
+
+
+(defn- scale-point-props
+  [point]
+  {:x (scale-down (get point "x"))
+   :y (scale-down (get point "y"))})
+
+
+(defn- scale-edge-props
+  [edge]
+  {:points (mapv scale-point-props (get edge "points"))})
 
 
 (defn get-edges
   [g]
-  (vals (js->clj (aget g "_edgeLabels"))))
+  (mapv scale-edge-props (vals (js->clj (aget g "_edgeLabels")))))
 
 
 (def layout! (aget dagre "layout"))
