@@ -108,6 +108,9 @@
             height: 10000px;
             /* need to specify this before we start using em for everything */
             font-family: monospace;
+
+            /* this allows us to use position: absolute for child elements */
+            position: relative;
           }
 
           div.canvas div.laid-out {
@@ -116,6 +119,14 @@
             float: left;
             height: 0px;
             display: inline;
+          }
+
+          div.canvas div.line {
+            border: 1px solid black;
+            height: 0px;
+            position: absolute;
+            top: 0px;
+            left: 0px;
           }
 
           div.basic-block {
@@ -164,6 +175,7 @@
             position: relative;
             float: right;
             height: 0px;
+            z-index: 1;
           }
 
           div.function-list h3.title,

@@ -181,6 +181,46 @@
 (def basic-block-list (om/factory BasicBlockList))
 
 
+(def sqrt (.-sqrt js/Math))
+(def PI (.-PI js/Math))
+(def atan2 (.-atan2 js/Math))
+
+
+(defn geoline
+  [x y length angle]
+  (dom/div
+   {:class "line"
+    :style {:width (str length "em")
+            ;;:transform (str "rotate(" angle "rad) translate(" (- x) "em, " (- y) "em)")}}))
+            :transform (str "rotate(" angle "rad)")
+            :top (str y "em")
+            :left (str x "em")}}))
+
+
+(defn line
+  [x2 y2 x1 y1]
+  (let [a (- x1 x2)
+        b (- y1 y2)
+        c (sqrt
+           (+
+            (* a a)
+            (* b b)))
+        sx (/ (+ x1 x2) 2)
+        sy (/ (+ y1 y2) 2)
+        x (- sx (/ c 2))
+        y sy
+        alpha (- PI (atan2 (- b) a))]
+    (prn x1 y1 x2 y2)
+    (prn a b c sx sy x y alpha)
+    (geoline x y c alpha)))
+
+
+(defn multi-line
+  [props children]
+  (dom/div {:class "multi-line"}
+           children))
+
+
 (def *model* (atom {:functions {}
                     :basic-blocks {}}))
 (declare update-model!)
@@ -306,7 +346,7 @@
            (basic-block-list
             (om/computed {:basic-blocks basic-blocks}
                          {:select-bb #(update-model! {:selected-basic-block %})}))))))
-    (when (:selected-function (om/props this))
+    (if (:selected-function (om/props this))
       (let [props (om/props this)
             fva (:selected-function props)
             function (get-in props [:functions fva])
@@ -315,8 +355,14 @@
             basic-blocks (layout-cfg basic-blocks)]
         (canvas
          {}
-         (for [bb basic-blocks]
-           (positioned bb (basicblock bb)))))))))
+         [(for [bb basic-blocks]
+           (positioned bb (basicblock bb)))]))
+      (canvas
+       {}
+       (multi-line {}
+         [(line 1 1 6 9)
+          (line 1 1 9 6)]))))))
+
 
 
 (def app (om/factory App))
