@@ -82,7 +82,7 @@
         bend-points (get edge "bendPoints")
         points (concat [src-point] bend-points [target-point])]
     {:points (mapv klay-point->cfg points)
-     :type (get edge "type")
+     :type (keyword (get edge "type"))
      :src (js/parseInt (get edge "source"))
      :dst (js/parseInt (get edge "target"))}))
 
