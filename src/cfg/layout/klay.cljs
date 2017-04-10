@@ -10,14 +10,40 @@
   {"id" "root"
    "properties" {"direction" "DOWN"
                  "intCoordinates" false
-                 "spacing" 7
-                 ;; how far apart to route parallel, horizontal edges
-                 ;; unit: scale, relative to 1.0, which is the default node spacing?
-                 "de.cau.cs.kieler.klay.layered.edgeSpacingFactor" 0.1
-                 ;; spacing around the border of the view
+
+                 ;; base spacing value
                  ;; unit: em
-                 "de.cau.cs.kieler.borderSpacing" 1}
-   ;;"de.cau.cs.kieler.klay.layered.inLayerSpacingFactor" 0.5}
+                 "spacing" 2
+
+                 ;; horizontal spacing within a layer
+                 ;; unit: multiple of `spacing`
+                 "de.cau.cs.kieler.klay.layered.inLayerSpacingFactor" 3.5
+
+                 ;; how far apart to route parallel, horizontal edges
+                 ;; unit: multiple of `spacing`
+                 "de.cau.cs.kieler.klay.layered.edgeSpacingFactor" 0.1
+
+                 ;; spacing around the border of the view
+                 ;; unit: em?
+                 "de.cau.cs.kieler.borderSpacing" 1
+
+                ;; no apparent effect
+                 "de.cau.cs.kieler.portSpacing" 0.1
+
+                 ;; no apparent effect
+                 "de.cau.cs.kieler.klay.layered.components.compact" true
+
+                 ;; unclear what this does
+                 "de.cau.cs.kieler.klay.layered.unnecessaryBendpoints" true
+
+                 ;; how many iterations to run the algorithm
+                 ;; default: 7
+                 ;; limit: 1000
+                 ;; 500 was noticable over 19 nodes
+                 "de.cau.cs.kieler.klay.layered.thoroughness" 25}
+                 ;; not supported in klayjs?
+                 ;;"de.cau.cs.kieler.klay.layered.edgeNodeSpacingFactor" 0.1
+
    "children" []
    "edges" []})
 
@@ -120,9 +146,14 @@
         nodes-by-id' (reduce
                       (fn [nodes edge]
                         (let [nodes' (update-in nodes  [(get edge "source") "ports"] conj {"id" (make-out-edge-port edge)
-                                                                                           "properties" {"de.cau.cs.kieler.portSide" "SOUTH"}})
+                                                                                           "properties" {"de.cau.cs.kieler.portSide" "SOUTH"}
+                                                                                           ;; practical effect: offset from the node at which to start
+                                                                                           "height" 0
+                                                                                           "width" 0})
                               nodes' (update-in nodes' [(get edge "target") "ports"] conj {"id" (make-in-edge-port edge)
-                                                                                           "properties" {"de.cau.cs.kieler.portSide" "NORTH"}})]
+                                                                                           "properties" {"de.cau.cs.kieler.portSide" "NORTH"}
+                                                                                           "height" 0
+                                                                                           "width" 0})]
                           nodes'))
                       nodes-by-id
                       edges)]
