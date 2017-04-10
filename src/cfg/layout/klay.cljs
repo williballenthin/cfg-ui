@@ -16,9 +16,15 @@
 
 (defn- cfg-bb->klay
   [bb]
-  #js{"width" (:width bb)
-      "height" (:height bb)
-      "id" (str (:addr bb))})
+  (clj->js {"id" (str (:addr bb))
+            "width" (:width bb)
+            "height" (:height bb)
+            "properties" {"de.cau.cs.kieler.portConstraints" "FIXED_SIDE"}
+            "ports" [{"id" (str (:addr bb) "IN")
+                      "properties" {"de.cau.cs.kieler.portSide" "NORTH"}}
+                     {"id" (str (:addr bb) "OUT")
+                      "properties" {"de.cau.cs.kieler.portSide" "SOUTH"}}]}))
+
 
 
 (defn add-node!
@@ -29,10 +35,12 @@
 
 (defn- cfg-edge->klay
   [edge]
-  #js{"source" (str (:src edge))
-      "target" (str (:dst edge))
-      "type" (:type edge)
-      "id" (str (:src edge) (:type edge) (:dst edge))})
+  (clj->js {"source" (str (:src edge))
+            "sourcePort" (str (:src edge) "OUT")
+            "target" (str (:dst edge))
+            "targetPort" (str (:dst edge) "IN")
+            "type" (:type edge)
+            "id" (str (:src edge) (:type edge) (:dst edge))}))
 
 
 (defn add-edge!
