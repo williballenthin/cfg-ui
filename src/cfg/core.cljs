@@ -281,30 +281,6 @@
     (prn (str (:type edge) " " (hex-format (:src edge)) " -> " (hex-format (:dst edge))))))
 
 
-(defn layout-bbs
-  "
-   Using the given layout, merge the x and y coordinates onto the given basic blocks.
-
-   Params:
-    layout (map): from int basic block address to position map, with keys :x and :y.
-    bbs (sequence): the basic blocks.
-
-
-   Example::
-
-       (let [nodes       (klay/get-nodes result)
-             nodes-by-id (cmn/index-by :id nodes)
-             laid-out    (layout-bbs nodes-by-id basic-blocks)]
-         ...
-
-  "
-  [layout bbs]
-  (for [bb bbs]
-    (let [pos (get layout (:addr bb))]
-      (merge bb {:x (:x pos)
-                 :y (:y pos)}))))
-
-
 (defn layout-cfg-dagre
   [basic-blocks s e]
   (when (< 0 (count (remove nil? basic-blocks)))
@@ -317,7 +293,7 @@
       (doseq [edge edges]
         (dagre/add-edge! g edge))
       (dagre/layout! g)
-      (s {:nodes (cmn/index-by :id (dagre/get-nodes g))
+      (s {:nodes (dagre/get-nodes g)
           :edges (dagre/get-edges g)}))))
 
 
@@ -330,10 +306,9 @@
           g (klay/make)
           g (reduce klay/add-node g bbs)
           g (reduce klay/add-edge g edges)]
-      (cmn/d g)
       (klay/layout g
                    (fn [r]
-                     (s {:nodes (cmn/index-by :id (klay/get-nodes r))
+                     (s {:nodes (klay/get-nodes r)
                          :edges (klay/get-edges r)}))
                    (fn [err]
                      (e {:msg "klay: error"
@@ -484,26 +459,12 @@
             (:basic-blocks args))))
 
 
-;; TODO: what is this...
-;; why don't i have an `id` prop on these nodes??
-(defn get-node-position
-  [node]
-  {:addr (:addr node)
-   :id (:id node)
-   :x (:x node)
-   :y (:y node)
-   :height (:height node)
-   :width (:width node)})
-
-
 (defmethod action-handler :set-function-layout
   [key model args]
   (let [fva (:function args)
         nodes (:nodes args)
-        ;;node-positions (map get-node-position nodes)
-        ;;node-positions-by-addr (cmn/index-by :addr node-positions)
         edges (:edges args)]
-    (update-in model [:functions fva] assoc :layout {:nodes nodes
+    (update-in model [:functions fva] assoc :layout {:nodes (cmn/index-by :id nodes)
                                                      :edges edges})))
 
 
