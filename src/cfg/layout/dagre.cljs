@@ -23,6 +23,9 @@
       "label" (str (:addr bb))})
 
 
+;; TODO: push this indexing into a layout call,
+;; to keep this immutable.
+;; see the klay module as an example.
 (defn add-node!
   [g bb]
   (let [bb' (cfg-bb->dagre bb)]

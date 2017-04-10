@@ -27,11 +27,7 @@
   {"id" (str (:addr bb))
    "width" (:width bb)
    "height" (:height bb)
-   "properties" {"de.cau.cs.kieler.portConstraints" "FIXED_SIDE"}
-   "ports" [{"id" (str (:addr bb) "IN")
-             "properties" {"de.cau.cs.kieler.portSide" "NORTH"}}
-            {"id" (str (:addr bb) "OUT")
-             "properties" {"de.cau.cs.kieler.portSide" "SOUTH"}}]})
+   "properties" {"de.cau.cs.kieler.portConstraints" "FIXED_SIDE"}})
 
 
 (defn add-node
@@ -42,9 +38,7 @@
 (defn- cfg-edge->klay
   [edge]
   {"source" (str (:src edge))
-   "sourcePort" (str (:src edge) "OUT")
    "target" (str (:dst edge))
-   "targetPort" (str (:dst edge) "IN")
    "type" (:type edge)
    "id" (str (:src edge) (:type edge) (:dst edge))})
 
@@ -60,8 +54,7 @@
         y (get bb "y")
         w (get bb "width")
         h (get bb "height")]
-    {
-     :x x
+    {:x x
      :y y
      :height h
      :width w
@@ -98,13 +91,50 @@
 
 (defn- make-port-name
   [src dst direction]
-  (str src direction dst))
+  (str src "-" direction "-" dst))
+
+
+(defn- make-in-edge-port
+  [edge]
+  (make-port-name (get edge "source") (get edge "target") "IN"))
+
+
+(defn- make-out-edge-port
+  [edge]
+  (make-port-name (get edge "source") (get edge "target") "OUT"))
+
+
+(defn- update-ports
+  "
+   Add ports to nodes and edges.
+  "
+  [g]
+  (let [edges (get g "edges")
+        edges' (map
+                 (fn [edge]
+                   (merge edge  {"sourcePort" (make-out-edge-port edge)
+                                 "targetPort" (make-in-edge-port edge)}))
+                 edges)
+        nodes (get g "children")
+        nodes-by-id (cmn/index-by #(get % "id") nodes)
+        nodes-by-id' (reduce
+                      (fn [nodes edge]
+                        (let [nodes' (update-in nodes  [(get edge "source") "ports"] conj {"id" (make-out-edge-port edge)
+                                                                                           "properties" {"de.cau.cs.kieler.portSide" "SOUTH"}})
+                              nodes' (update-in nodes' [(get edge "target") "ports"] conj {"id" (make-in-edge-port edge)
+                                                                                           "properties" {"de.cau.cs.kieler.portSide" "NORTH"}})]
+                          nodes'))
+                      nodes-by-id
+                      edges)]
+      (merge g {"children" (into [] (vals nodes-by-id'))
+                "edges" edges'})))
 
 
 (defn layout
   [g s e]
-  (let [layout-fn (aget klay "layout")]
-    (layout-fn (clj->js {"graph" g
+  (let [layout-fn (aget klay "layout")
+        g' (update-ports g)]
+    (layout-fn (clj->js {"graph" g'
                          "options" {}
                          "success" s
                          "error" e}))))
