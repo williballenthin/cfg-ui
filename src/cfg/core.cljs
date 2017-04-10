@@ -278,8 +278,32 @@
     (prn (str (:type edge) " " (hex-format (:src edge)) " -> " (hex-format (:dst edge))))))
 
 
+(defn layout-bbs
+  "
+   Using the given layout, merge the x and y coordinates onto the given basic blocks.
+
+   Params:
+    layout (map): from int basic block address to position map, with keys :x and :y.
+    bbs (sequence): the basic blocks.
+
+
+   Example::
+
+       (let [nodes       (klay/get-nodes result)
+             nodes-by-id (cmn/index-by :id nodes)
+             laid-out    (layout-bbs nodes-by-id basic-blocks)]
+         ...
+
+  "
+  [layout bbs]
+  (for [bb bbs]
+    (let [pos (get layout (:addr bb))]
+      (merge bb {:x (:x pos)
+                 :y (:y pos)}))))
+
+
 (defn layout-cfg
-  [basic-blocks]
+  [basic-blocks s e]
   (when (< 0 (count (remove nil? basic-blocks)))
     (let [edges (compute-edges basic-blocks)
           bbs (map #(assoc % :width (compute-bb-width %)) basic-blocks)
@@ -299,16 +323,16 @@
                      (let [edges (klay/get-edges r)]
                        (prn "klay: success!")
                        (cmn/d r)
-                       (cmn/d edges)))
-                   (fn [e]
-                    (prn "klay: error")
-                    cmn/d))
-      (let [positions (cmn/index-by :label (dagre/get-nodes g))]
-        {:nodes (for [bb bbs]
-                  (let [pos (get positions (:addr bb))]
-                    (merge bb {:x (:x pos)
-                               :y (:y pos)})))
-         :edges (dagre/get-edges g)}))))
+                       (cmn/d edges)
+                       (s {:nodes (layout-bbs (cmn/index-by :id (klay/get-nodes r)) bbs)
+                           :edges (klay/get-edges r)})))
+                   (fn [err]
+                     (prn "klay: error")
+                     (cmn/d err)
+                     (e err)))
+      (s {:nodes (layout-bbs (cmn/index-by :label (dagre/get-nodes g)) bbs)
+          ;; TODO: recover edge src, dst
+          :edges (dagre/get-edges g)}))))
 
 
 (defn positioned
@@ -374,7 +398,7 @@
            function (get-in props [:functions fva])
            basic-blocks (:basic-blocks function)
            basic-blocks (map #(get-in props [:basic-blocks (:addr %)]) basic-blocks)
-           g (layout-cfg basic-blocks)]
+           g (layout-cfg basic-blocks (fn [layout] (cmn/d layout)) (fn [err] (cmn/d err)))]
        (canvas
         {}
         [(for [bb (:nodes g)]
