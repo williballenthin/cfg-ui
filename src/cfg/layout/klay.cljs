@@ -7,11 +7,12 @@
 
 (defn make
   []
-  #js{"id" "root"
-      "properties" #js{"direction" "DOWN"
-                       "spacing" 40}
-      "children" #js[]
-      "edges" #js[]})
+  (clj->js {"id" "root"
+            "properties" {"direction" "DOWN"
+                          "spacing" 10
+                          "edgeSpacingFactor" 1}
+            "children" []
+            "edges" []}))
 
 
 (defn- cfg-bb->klay
@@ -94,7 +95,7 @@
 (defn layout
   [g s e]
   (let [layout-fn (aget klay "layout")]
-    (layout-fn #js{"graph" g
-                   "options" #js{}
-                   "success" s
-                   "error" e})))
+    (layout-fn (clj->js {"graph" g
+                         "options" {}
+                         "success" s
+                         "error" e}))))
