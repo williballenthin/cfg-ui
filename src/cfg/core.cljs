@@ -2,7 +2,7 @@
   (:require [goog.dom :as gdom]
             [clojure.data]
             [clojure.string :as string]
-            [cljs.core.async :refer [put! chan <! close!]]
+            [cljs.core.async :refer [put! chan <! close!] :as async]
             [goog.string :as gstring]
             [goog.string.format]
             [cljs.pprint]
@@ -152,19 +152,19 @@
 (defn basic-block-list
   [props]
   (let [bbs (:basic-blocks props)
-        bbs (sort-by :addr bbs)
+        bbs (sort bbs)
         on-select-bb (:select-bb props)]
     (dom/div
      {:class "bb-list"}
      (dom/h3 {:class "title"}
              "basic blocks (" (count bbs) " total):")
      (dom/ul
-      (for [bb bbs]
-        (dom/li {:key (str (:addr bb))
+      (for [bbva bbs]
+        (dom/li {:key (str bbva)
                  :class "bb"
-                 :onClick #(on-select-bb (:addr bb))}
+                 :onClick #(on-select-bb bbva)}
                 (dom/span {:class "offset"}
-                          (hex-format (:addr bb)))))))))
+                          (hex-format bbva))))))))
 
 
 (def sqrt (.-sqrt js/Math))
@@ -213,7 +213,10 @@
 
 (def *model* (atom {:functions {}
                     :basic-blocks {}}))
+(declare app)
+(declare dispatch!)
 (declare update-model!)
+
 
 
 (defn r2->insn
@@ -264,12 +267,12 @@
   [basic-blocks]
   (remove nil?
           (concat
-            (for [bb basic-blocks]
-              (when (:jump bb)
-                {:src (:addr bb) :dst (:jump bb) :type :jump}))
-            (for [bb basic-blocks]
-              (when (:fail bb)
-                {:src (:addr bb) :dst (:fail bb) :type :fail})))))
+           (for [bb basic-blocks]
+             (when (:jump bb)
+               {:src (:addr bb) :dst (:jump bb) :type :jump}))
+           (for [bb basic-blocks]
+             (when (:fail bb)
+               {:src (:addr bb) :dst (:fail bb) :type :fail})))))
 
 
 (defn dump-edges
@@ -320,17 +323,12 @@
       (dagre/layout! g)
       (klay/layout g2
                    (fn [r]
-                     (let [edges (klay/get-edges r)]
-                       (prn "klay: success!")
-                       (cmn/d r)
-                       (cmn/d edges)
-                       (s {:nodes (layout-bbs (cmn/index-by :id (klay/get-nodes r)) bbs)
-                           :edges (klay/get-edges r)})))
+                     (s {:nodes (layout-bbs (cmn/index-by :id (klay/get-nodes r)) bbs)
+                         :edges (klay/get-edges r)}))
                    (fn [err]
-                     (prn "klay: error")
-                     (cmn/d err)
-                     (e err)))
-      (s {:nodes (layout-bbs (cmn/index-by :label (dagre/get-nodes g)) bbs)
+                     (e {:msg "klay: error"
+                         :error err})))
+      (s {:nodes (layout-bbs (cmn/index-by :id (dagre/get-nodes g)) bbs)
           ;; TODO: recover edge src, dst
           :edges (dagre/get-edges g)}))))
 
@@ -365,6 +363,24 @@
        (line x1 y1 x2 y2)))))
 
 
+(defn- fetch-basic-block-instructions
+  [bb]
+  (go
+    (let [addr (:addr bb)
+          ninstr (:ninstr bb)
+          aoj (<! (r2/get-instructions addr ninstr))
+          insns (map r2->insn (:response aoj))]
+      (assoc bb :instructions insns))))
+
+
+(defn- fetch-function
+  [fva]
+  (go
+    (let [afbj (<! (r2/get-basic-blocks fva))
+          basic-blocks (:response afbj)]
+      (<! (async/map vector (map fetch-basic-block-instructions basic-blocks))))))
+
+
 (defn app
   [props]
   (dom/div
@@ -374,19 +390,18 @@
     (function-list
      {:functions (vals (:functions props))
       :select-function (fn [fva]
-                         (update-model! {:selected-function fva})
+                         (dispatch! :set-selected-function {:selected-function fva})
                          (go
-                           (let [afbj (<! (r2/get-basic-blocks fva))
-                                 basic-blocks (:response afbj)]
-                             (update-model! [:functions fva :basic-blocks] basic-blocks)
-                             (doseq [basic-block basic-blocks]
-                               (go
-                                 (let [addr (:addr basic-block)
-                                       ninstr (:ninstr basic-block)
-                                       aoj (<! (r2/get-instructions addr ninstr))
-                                       insns (map r2->insn (:response aoj))
-                                       changes (assoc basic-block :instructions insns)]
-                                   (update-model! [:basic-blocks addr] changes)))))))})
+                           (let [basic-blocks (<! (fetch-function fva))]
+                             (dispatch! :set-function-basic-blocks {:function fva :basic-blocks basic-blocks})
+                             (layout-cfg basic-blocks
+                                         (fn [layout]
+                                           (dispatch! :set-function-layout {:function fva
+                                                                            :nodes (:nodes layout)
+                                                                            :edges (:edges layout)}))
+                                         (fn [err]
+                                           (prn "ERROR!")
+                                           (cmn/d err))))))})
     (when (:selected-function props)
       (let [fva (:selected-function props)
             function (get-in props [:functions fva])
@@ -396,14 +411,14 @@
    (when (:selected-function props)
      (let [fva (:selected-function props)
            function (get-in props [:functions fva])
-           basic-blocks (:basic-blocks function)
-           basic-blocks (map #(get-in props [:basic-blocks (:addr %)]) basic-blocks)
-           g (layout-cfg basic-blocks (fn [layout] (cmn/d layout)) (fn [err] (cmn/d err)))]
+           layout (:layout function)]
        (canvas
         {}
-        [(for [bb (:nodes g)]
-           (positioned bb (basicblock bb)))
-         (for [edge (:edges g)]
+        [(for [bbva (:basic-blocks function)]
+           (let [pos (get-in layout [:nodes bbva])
+                 bb (get-in props [:basic-blocks bbva])]
+             (positioned pos (basicblock bb))))
+         (for [edge (:edges layout)]
            (edge-line edge))])))))
 
 
@@ -432,6 +447,60 @@
   ([path new-stuff]
    (render! *model* path new-stuff)))
 
+(defmulti action-handler (fn [key &rest] key))
+
+(defmethod action-handler :default
+  [key model args]
+  (prn (str "ERROR: no dispatch! handler for: " key)))
+
+
+(defmethod action-handler :set-selected-function
+  [key model args]
+  (let [fva (:selected-function args)]
+    (assoc model :selected-function fva)))
+
+
+(defmethod action-handler :set-function-basic-blocks
+  [key model args]
+  (let [fva (:function args)
+        bbs (mapv :addr (:basic-blocks args))
+        model' (update-in model [:functions fva] assoc :basic-blocks bbs)]
+    (reduce (fn [m bb]
+              (update m :basic-blocks assoc (:addr bb) bb))
+            model'
+            (:basic-blocks args))))
+
+
+;; TODO: what is this...
+;; why don't i have an `id` prop on these nodes??
+(defn get-node-position
+  [node]
+  {:addr (:addr node)
+   :id (:id node)
+   :x (:x node)
+   :y (:y node)
+   :height (:height node)
+   :width (:width node)})
+
+
+(defmethod action-handler :set-function-layout
+  [key model args]
+  (let [fva (:function args)
+        nodes (:nodes args)
+        node-positions (map get-node-position nodes)
+        node-positions-by-addr (cmn/index-by :addr node-positions)
+        edges (:edges args)]
+    (update-in model [:functions fva] assoc :layout {:nodes node-positions-by-addr
+                                                     :edges edges})))
+
+
+(defn dispatch!
+  [key args]
+  (prn (str "dispatch! " key))
+  (let [before-model @*model*]
+    (reset! *model* (action-handler key @*model* args))
+    (cmn/d (second (clojure.data/diff before-model @*model*)))
+    (render! *model*)))
 
 
 (render! *model*)

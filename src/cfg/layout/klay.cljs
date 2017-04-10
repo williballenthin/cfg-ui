@@ -80,7 +80,6 @@
 
 (defn layout
   [g s e]
-  (cmn/d g)
   (let [layout-fn (aget klay "layout")]
     (layout-fn #js{"graph" g
                    "options" #js{}

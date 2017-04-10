@@ -40,7 +40,7 @@
    :y (get bb "y")
    :height (get bb "height")
    :width (get bb "width")
-   :label (js/parseInt (get bb "label"))})
+   :id (js/parseInt (get bb "label"))})
 
 
 (defn get-nodes
