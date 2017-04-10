@@ -7,47 +7,51 @@
 
 (defn make
   []
-  (clj->js {"id" "root"
-            "properties" {"direction" "DOWN"
-                          "spacing" 10
-                          "edgeSpacingFactor" 1}
-            "children" []
-            "edges" []}))
+  {"id" "root"
+   "properties" {"direction" "DOWN"
+                 "intCoordinates" false
+                 "spacing" 7
+                 ;; how far apart to route parallel, horizontal edges
+                 ;; unit: scale, relative to 1.0, which is the default node spacing?
+                 "de.cau.cs.kieler.klay.layered.edgeSpacingFactor" 0.1
+                 ;; spacing around the border of the view
+                 ;; unit: em
+                 "de.cau.cs.kieler.borderSpacing" 1}
+   ;;"de.cau.cs.kieler.klay.layered.inLayerSpacingFactor" 0.5}
+   "children" []
+   "edges" []})
 
 
 (defn- cfg-bb->klay
   [bb]
-  (clj->js {"id" (str (:addr bb))
-            "width" (:width bb)
-            "height" (:height bb)
-            "properties" {"de.cau.cs.kieler.portConstraints" "FIXED_SIDE"}
-            "ports" [{"id" (str (:addr bb) "IN")
-                      "properties" {"de.cau.cs.kieler.portSide" "NORTH"}}
-                     {"id" (str (:addr bb) "OUT")
-                      "properties" {"de.cau.cs.kieler.portSide" "SOUTH"}}]}))
+  {"id" (str (:addr bb))
+   "width" (:width bb)
+   "height" (:height bb)
+   "properties" {"de.cau.cs.kieler.portConstraints" "FIXED_SIDE"}
+   "ports" [{"id" (str (:addr bb) "IN")
+             "properties" {"de.cau.cs.kieler.portSide" "NORTH"}}
+            {"id" (str (:addr bb) "OUT")
+             "properties" {"de.cau.cs.kieler.portSide" "SOUTH"}}]})
 
 
-
-(defn add-node!
+(defn add-node
   [g bb]
-  (let [nodes (aget g "children")]
-    (.push nodes (cfg-bb->klay bb))))
+  (update-in g ["children"] #(cons (cfg-bb->klay bb) %)))
 
 
 (defn- cfg-edge->klay
   [edge]
-  (clj->js {"source" (str (:src edge))
-            "sourcePort" (str (:src edge) "OUT")
-            "target" (str (:dst edge))
-            "targetPort" (str (:dst edge) "IN")
-            "type" (:type edge)
-            "id" (str (:src edge) (:type edge) (:dst edge))}))
+  {"source" (str (:src edge))
+   "sourcePort" (str (:src edge) "OUT")
+   "target" (str (:dst edge))
+   "targetPort" (str (:dst edge) "IN")
+   "type" (:type edge)
+   "id" (str (:src edge) (:type edge) (:dst edge))})
 
 
-(defn add-edge!
+(defn add-edge
   [g edge]
-  (let [edges (aget g "edges")]
-    (.push edges (cfg-edge->klay edge))))
+  (update-in g ["edges"] #(cons (cfg-edge->klay edge) %)))
 
 
 (defn- klay-bb->cfg
@@ -90,6 +94,11 @@
 (defn get-edges
   [g]
   (mapv klay-edge->cfg (js->clj (aget g "edges"))))
+
+
+(defn- make-port-name
+  [src dst direction]
+  (str src direction dst))
 
 
 (defn layout

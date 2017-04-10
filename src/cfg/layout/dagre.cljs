@@ -40,7 +40,6 @@
         y (get bb "y")
         w (get bb "width")
         h (get bb "height")]
-    (cmn/d bb)
     {
      :x (- x (/ w 2))
      :y (- y (/ h 2))

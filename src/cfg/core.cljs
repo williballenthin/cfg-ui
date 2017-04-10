@@ -327,11 +327,10 @@
     (let [edges (compute-edges basic-blocks)
           bbs (map #(assoc % :width (compute-bb-width %)) basic-blocks)
           bbs (map #(assoc % :height (compute-bb-height %)) bbs)
-          g (klay/make)]
-      (doseq [bb bbs]
-        (klay/add-node! g bb))
-      (doseq [edge edges]
-        (klay/add-edge! g edge))
+          g (klay/make)
+          g (reduce klay/add-node g bbs)
+          g (reduce klay/add-edge g edges)]
+      (cmn/d g)
       (klay/layout g
                    (fn [r]
                      (s {:nodes (cmn/index-by :id (klay/get-nodes r))
