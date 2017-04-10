@@ -36,11 +36,17 @@
 
 (defn- dagre-bb->cfg
   [bb]
-  {:x (get bb "x")
-   :y (get bb "y")
-   :height (get bb "height")
-   :width (get bb "width")
-   :id (js/parseInt (get bb "label"))})
+  (let [x (get bb "x")
+        y (get bb "y")
+        w (get bb "width")
+        h (get bb "height")]
+    (cmn/d bb)
+    {
+     :x (- x (/ w 2))
+     :y (- y (/ h 2))
+     :height h
+     :width w
+     :id (js/parseInt (get bb "label"))}))
 
 
 (defn get-nodes

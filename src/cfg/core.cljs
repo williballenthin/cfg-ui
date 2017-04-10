@@ -305,32 +305,46 @@
                  :y (:y pos)}))))
 
 
-(defn layout-cfg
+(defn layout-cfg-dagre
   [basic-blocks s e]
   (when (< 0 (count (remove nil? basic-blocks)))
     (let [edges (compute-edges basic-blocks)
           bbs (map #(assoc % :width (compute-bb-width %)) basic-blocks)
           bbs (map #(assoc % :height (compute-bb-height %)) bbs)
-          g (dagre/make)
-          g2 (klay/make)]
-      (dump-edges edges)
+          g (dagre/make)]
       (doseq [bb bbs]
-        (dagre/add-node! g bb)
-        (klay/add-node! g2 bb))
+        (dagre/add-node! g bb))
       (doseq [edge edges]
-        (dagre/add-edge! g edge)
-        (klay/add-edge! g2 edge))
+        (dagre/add-edge! g edge))
       (dagre/layout! g)
-      (klay/layout g2
+      (s {:nodes (cmn/index-by :id (dagre/get-nodes g))
+          :edges (dagre/get-edges g)}))))
+
+
+(defn layout-cfg-klay
+  [basic-blocks s e]
+  (when (< 0 (count (remove nil? basic-blocks)))
+    (let [edges (compute-edges basic-blocks)
+          bbs (map #(assoc % :width (compute-bb-width %)) basic-blocks)
+          bbs (map #(assoc % :height (compute-bb-height %)) bbs)
+          g (klay/make)]
+      (doseq [bb bbs]
+        (klay/add-node! g bb))
+      (doseq [edge edges]
+        (klay/add-edge! g edge))
+      (klay/layout g
                    (fn [r]
-                     (s {:nodes (layout-bbs (cmn/index-by :id (klay/get-nodes r)) bbs)
+                     (s {:nodes (cmn/index-by :id (klay/get-nodes r))
                          :edges (klay/get-edges r)}))
                    (fn [err]
                      (e {:msg "klay: error"
-                         :error err})))
-      (s {:nodes (layout-bbs (cmn/index-by :id (dagre/get-nodes g)) bbs)
-          ;; TODO: recover edge src, dst
-          :edges (dagre/get-edges g)}))))
+                         :error err}))))))
+
+
+(defn layout-cfg
+  [basic-blocks s e]
+  (layout-cfg-klay basic-blocks s e))
+  ;;(layout-cfg-dagre basic-blocks s e))
 
 
 (defn positioned
@@ -339,8 +353,8 @@
         y (:y props)
         w (:width props)
         h (:height props)
-        top (str (- y (/ h 2)) "em")
-        left (str (- x  (/ w 2)) "em")]
+        top (str y "em")
+        left (str x "em")]
     (dom/div {:class "laid-out"
               :style {:top top
                       :left left}}
@@ -487,10 +501,10 @@
   [key model args]
   (let [fva (:function args)
         nodes (:nodes args)
-        node-positions (map get-node-position nodes)
-        node-positions-by-addr (cmn/index-by :addr node-positions)
+        ;;node-positions (map get-node-position nodes)
+        ;;node-positions-by-addr (cmn/index-by :addr node-positions)
         edges (:edges args)]
-    (update-in model [:functions fva] assoc :layout {:nodes node-positions-by-addr
+    (update-in model [:functions fva] assoc :layout {:nodes nodes
                                                      :edges edges})))
 
 

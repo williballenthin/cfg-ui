@@ -43,11 +43,16 @@
 
 (defn- klay-bb->cfg
   [bb]
-  {:x (get bb "x")
-   :y (get bb "y")
-   :height (get bb "height")
-   :width (get bb "width")
-   :id (js/parseInt (get bb "id"))})
+  (let [x (get bb "x")
+        y (get bb "y")
+        w (get bb "width")
+        h (get bb "height")]
+    {
+     :x x
+     :y y
+     :height h
+     :width w
+     :id (js/parseInt (get bb "id"))}))
 
 
 (defn get-nodes
