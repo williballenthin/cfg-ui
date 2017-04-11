@@ -26,18 +26,34 @@
    [this]
    {:dragging false
     :last-x 0
-    :margin-left 0
+    :shift-left 0
     :last-y 0
-    :margin-top 0})
+    :shift-top 0
+    :zoom 1.0})
   (render
    [this]
    ;; use local mutable state for performance.
    ;; while panning, update this state, and only re-render upon `onMouseUp`.
-   (let [a-last-x (atom (:last-x (om/get-state this)))
-         a-margin-left (atom (:margin-left (om/get-state this)))
-         a-last-y (atom (:last-y (om/get-state this)))
-         a-margin-top (atom (:margin-top (om/get-state this)))]
+   (let [state (om/get-state this)
+         a-last-x (atom (:last-x state))
+         a-shift-left (atom (:shift-left state))
+         a-last-y (atom (:last-y state))
+         a-shift-top (atom (:shift-top state))]
      (dom/div {:class "canvas-viewport"
+               :ref "viewport"
+               ;; scroll to zoom support on canvas
+               :onWheel
+               (fn [e]
+                 (.preventDefault e)
+                 (let [delta (aget e "deltaY")
+                       state (om/get-state this)]
+                   (if (> 0 delta)
+                     (do
+                       (prn "scroll in")
+                       (om/set-state! this (assoc state :zoom (* 1.1 (:zoom state)))))
+                     (do
+                       (prn "scroll out")
+                       (om/set-state! this (assoc state :zoom (* 0.9 (:zoom state))))))))
                ;; click-and-drag on the viewport pans the canvas
                :onMouseDown
                (fn [e]
@@ -54,9 +70,9 @@
                        state (om/get-state this)
                        updates {:dragging false
                                 :last-x @a-last-x
-                                :margin-left @a-margin-left
+                                :shift-left @a-shift-left
                                 :last-y @a-last-y
-                                :margin-top @a-margin-top}]
+                                :shift-top @a-shift-top}]
                    (om/set-state! this (merge state updates))))
                :onMouseMove
                (fn [e]
@@ -65,24 +81,26 @@
                    (let [evt (or e (js/event))
                          canvas (js/ReactDOM.findDOMNode (aget this "refs" "canvas"))
                          style (aget canvas "style")
+                         scale (:zoom state)
                          client-x (aget evt "clientX")
                          delta-x (- client-x @a-last-x)
-                         margin-left' (+ @a-margin-left delta-x)
+                         delta-x (* delta-x (/ 1.0 scale))
+                         shift-left' (+ @a-shift-left delta-x)
                          client-y (aget evt "clientY")
                          delta-y (- client-y @a-last-y)
-                         margin-top' (+ @a-margin-top delta-y)]
+                         delta-y (* delta-y (/ 1.0 scale))
+                         shift-top' (+ @a-shift-top delta-y)
+                         transform (str "scale(" (:zoom state) ") translate(" shift-left' "px, " shift-top' "px)")]
                      (reset! a-last-x client-x)
-                     (reset! a-margin-left margin-left')
+                     (reset! a-shift-left shift-left')
                      (reset! a-last-y client-y)
-                     (reset! a-margin-top margin-top')
-                     (aset style "marginLeft" (str margin-left' "px"))
-                     (aset style "marginTop" (str margin-top' "px")))))}
-              ;;(om/set-state! this (merge state updates)))))}
-              (dom/div {:class "canvas"
-                        :ref "canvas"
-                        :style #js{"marginLeft" (:margin-left (om/get-state this))
-                                   "marginTop" (:margin-top (om/get-state this))}}
-                       (om/children this))))))
+                     (reset! a-shift-top shift-top')
+                     (aset style "transform" transform))))}
+              (let [transform (str "scale(" (:zoom state)  ") translate(" (:shift-left state) "px, " (:shift-top state) "px)")]
+                (dom/div {:class "canvas"
+                          :ref "canvas"
+                          :style #js{"transform" transform}}
+                         (om/children this)))))))
 
 
 (def canvas (om/factory Canvas))
