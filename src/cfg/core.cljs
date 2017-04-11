@@ -387,10 +387,23 @@
       (<! (async/map vector (map fetch-basic-block-instructions basic-blocks))))))
 
 
+(defn key-input
+  [props]
+  (dom/input
+   {:type "text"
+    :class "key-input"
+    :autoFocus true
+    :onKeyUp (or (:on-key-up props)
+                 cmn/d)}))
+
+
 (defn app
   [props]
   (dom/div
    {:class "app"}
+   (key-input {:on-key-up (fn [e]
+                            (prn "keyup")
+                            (cmn/d e))})
    (dom/div
     {:class "panels"}
     (function-list
